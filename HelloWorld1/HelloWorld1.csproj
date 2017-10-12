@@ -28,4 +28,10 @@
     <Folder Include="Content\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="HelloWorld1.pfx">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

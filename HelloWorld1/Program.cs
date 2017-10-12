@@ -7,6 +7,8 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography.X509Certificates;
+using System.Net;
 
 namespace HelloWorld1
 {
@@ -21,7 +23,19 @@ namespace HelloWorld1
 
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
+                .UseKestrel(options =>
+                {
+                    options.Listen(IPAddress.Loopback, 5000);
+                    options.Listen(IPAddress.Loopback, 5001, listenOptions =>
+                    {
+                        listenOptions.UseHttps("HelloWorld1.pfx","HelloWorld1");
+                    });
+
+                })
+                .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 .Build();
     }
+
+
 }
