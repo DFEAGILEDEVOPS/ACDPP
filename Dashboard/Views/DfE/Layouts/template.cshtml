@@ -1,0 +1,29 @@
+﻿@using Dashboard.Controllers
+@{
+    Layout = "../../govuk/layouts/template.cshtml";
+    var version = typeof(HomeController).Assembly.GetName().Version;
+}
+@section Head {
+    @RenderSection("Head", required: false)
+
+    <!--[if gt IE 8]><!--> <!--<link href="/css/main.css?v=@version" rel="stylesheet" type="text/css">--><!--<![endif]-->
+    <!--[if IE 6]><link href="/css/main-ie6.css" rel="stylesheet" type="text/css" /><![endif]-->
+    <!--[if IE 7]><link href="/css/main-ie7.css" rel="stylesheet" type="text/css" /><![endif]-->
+    <!--[if IE 8]><link href="/css/main-ie8.css" rel="stylesheet" type="text/css"/><![endif]-->
+}
+<main id="content" class="page @(ViewBag.pageClass)" role="main" tabindex="-1">
+    @if (ViewBag.suppressHomeLink != true)
+    {
+        @*<div class="grid-row">
+                <div class="column-full">
+                    <a class="home-link" href="~/">Home</a>
+                </div>
+       </div>*@
+    }
+    else
+    {
+        <div class="pre-content"></div>
+    }
+    @RenderBody()
+
+</main>

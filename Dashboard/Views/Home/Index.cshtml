@@ -1,0 +1,69 @@
+﻿@{
+    ViewData["Title"] = "The Platform Thing: Dashboard";
+}
+@model Dashboard.Models.ProjectViewModel
+<main id="content" role="main">
+    <div class="grid-row">
+        <div class="column-two-thirds">
+            @using (Html.BeginForm(null, null, FormMethod.Post, new { autocomplete = "off" }))
+            {
+                @Html.ValidationSummary()
+                @Html.AntiForgeryToken()
+
+                <h1 class="heading-large">
+                    New Project
+                </h1>
+                <h2 class="heading-medium">Project Details</h2>
+                <p>Enter the cost code and title of your project.</p>
+                <fieldset>
+                    <legend class="visuallyhidden">Project Details</legend>
+                    <div class="form-group">
+                        @Html.LabelFor(model => model.CostCode, "Enter your cost code", htmlAttributes: new { @class = "form-label col-md-10" })
+                        @Html.ValidationMessageFor(model => model.CostCode, null, new { @class = "error-danger" })
+                        <div class="col-md-10">
+                            @Html.EditorFor(model => model.CostCode,new { @type = "email", @class = "form-control" })
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        @Html.LabelFor(model => model.TeamProjectName, "Enter your project name", htmlAttributes: new { @class = "form-label col-md-10" })
+                        @Html.ValidationMessageFor(model => model.TeamProjectName, "", new { @class = "error-danger" })
+                        <div class="col-md-10">
+                            @Html.EditorFor(model => model.TeamProjectName, null,null, new { @class = "form-control" })
+                        </div>
+                    </div>
+                </fieldset>
+
+                <h2 class="heading-medium">Team Details</h2>
+                <fieldset>
+                    <legend class="visuallyhidden">Members</legend>
+                    <p>Add the name and email address of team members.</p>
+                    @for (var i = 0; i < Model.TeamMembers.Count; i++)
+                    {
+                        <div class="form-group">
+                            @Html.LabelFor(model => Model.TeamMembers[i].Name, $"Name {i+1}", htmlAttributes: new { @class = "form-label col-md-10" })
+                            @Html.ValidationMessageFor(model => Model.TeamMembers[i].Name, null, new { @class = "error-danger" })
+                            <div class="col-md-10">
+                                @Html.EditorFor(model => Model.TeamMembers[i].Name, null,null, new { @class = "form-control" })
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            @Html.LabelFor(model => Model.TeamMembers[i].Email, $"Email {i+1}", htmlAttributes: new { @class = "form-label col-md-10" })
+                            @Html.ValidationMessageFor(model => Model.TeamMembers[i].Email, "", new { @class = "error-danger" })
+                            <div class="col-md-10">
+                                @Html.EditorFor(model => Model.TeamMembers[i].Email,null,null,new { @type = "email", @class = "form-control" })
+                            </div>
+                        </div>
+                    }
+                    <input type="submit" class="link-button" name="command" value="Add" />
+                </fieldset>
+
+                <fieldset>
+                    <div class="form-group">
+                        <input type="submit" class="button" name="command" value="Create" />
+                    </div>
+                </fieldset>
+            }
+        </div>
+    </div>
+</main>
+

@@ -1,0 +1,9 @@
+D:\Source\Repos\ACDPP\Extensions\obj\Debug\netcoreapp2.0\Extensions.csprojResolveAssemblyReference.cache
+D:\Source\Repos\ACDPP\Extensions\obj\Debug\netcoreapp2.0\Extensions.csproj.CoreCompileInputs.cache
+D:\Source\Repos\ACDPP\Extensions\obj\Debug\netcoreapp2.0\Extensions.AssemblyInfoInputs.cache
+D:\Source\Repos\ACDPP\Extensions\obj\Debug\netcoreapp2.0\Extensions.AssemblyInfo.cs
+D:\Source\Repos\ACDPP\Extensions\bin\Debug\netcoreapp2.0\Extensions.deps.json
+D:\Source\Repos\ACDPP\Extensions\bin\Debug\netcoreapp2.0\Extensions.dll
+D:\Source\Repos\ACDPP\Extensions\bin\Debug\netcoreapp2.0\Extensions.pdb
+D:\Source\Repos\ACDPP\Extensions\obj\Debug\netcoreapp2.0\Extensions.dll
+D:\Source\Repos\ACDPP\Extensions\obj\Debug\netcoreapp2.0\Extensions.pdb
