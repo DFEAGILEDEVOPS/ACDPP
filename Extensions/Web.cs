@@ -6,8 +6,9 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using System.Web;
+using System.Net;
 using System.Xml.Linq;
+using Microsoft.AspNetCore.Http;
 
 namespace Extensions
 {

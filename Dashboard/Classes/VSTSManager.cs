@@ -15,10 +15,9 @@ namespace Dashboard.Classes
 {
     public class VSTSManager
     {
-        const string Account = "agilefactory";
+        public const string Account = "agilefactory";
         const string ApiVersion = "1.0";
         const string ProjectTemplateId = "24a1e994-d40e-4e78-804d-8fa89c4e6c1d";
-        const string VSRepository = "https://agilefactory.visualstudio.com/_git/ACDPP";
 
         #region Classes
         public class Project

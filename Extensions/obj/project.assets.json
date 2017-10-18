@@ -1120,6 +1120,7 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.bintray.com/nuget/gov-uk-notify/nuget": {},
         "https://api.nuget.org/v3/index.json": {},
         "https://nuget.telerik.com/nuget1": {},
         "https://nuget.telerik.com/nuget2": {}

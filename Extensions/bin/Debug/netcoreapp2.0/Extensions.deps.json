@@ -8,7 +8,8 @@
     ".NETCoreApp,Version=v2.0": {
       "Extensions/1.0.0": {
         "dependencies": {
-          "System.Data.SqlClient": "4.4.0"
+          "System.Data.SqlClient": "4.4.0",
+          "Microsoft.AspNetCore.Http.Abstractions": "2.0.0.0"
         },
         "runtime": {
           "Extensions.dll": {}
@@ -119,6 +120,11 @@
             "assetType": "runtime"
           }
         }
+      },
+      "Microsoft.AspNetCore.Http.Abstractions/2.0.0.0": {
+        "runtime": {
+          "Microsoft.AspNetCore.Http.Abstractions.dll": {}
+        }
       }
     }
   },
@@ -190,6 +196,11 @@
       "sha512": "sha512-6JX7ZdaceBiLKLkYt8zJcp4xTJd1uYyXXEkPw6mnlUIjh1gZPIVKPtRXPmY5kLf6DwZmf5YLwR3QUrRonl7l0A==",
       "path": "system.text.encoding.codepages/4.4.0",
       "hashPath": "system.text.encoding.codepages.4.4.0.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.Http.Abstractions/2.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
     }
   }
 }
