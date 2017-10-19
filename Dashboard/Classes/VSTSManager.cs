@@ -7,9 +7,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using System.Text;
-using LibGit2Sharp;
 using Extensions;
-using LibGit2Sharp.Handlers;
 
 namespace Dashboard.Classes
 {
@@ -353,26 +351,26 @@ namespace Dashboard.Classes
                 }
             }
         }
-        public static void CloneRepo(string sourceUrl, string sourceUsername, string sourcePassword, string targetUrl=null, string targetUsername=null, string targetPassword=null)
-        {
-            if (string.IsNullOrWhiteSpace(targetUrl)) targetUrl = sourceUrl;
-            if (string.IsNullOrWhiteSpace(targetUsername)) targetUsername = sourceUsername;
-            if (string.IsNullOrWhiteSpace(targetPassword)) targetPassword = sourcePassword;
+        //public static void CloneRepo(string sourceUrl, string sourceUsername, string sourcePassword, string targetUrl=null, string targetUsername=null, string targetPassword=null)
+        //{
+        //    if (string.IsNullOrWhiteSpace(targetUrl)) targetUrl = sourceUrl;
+        //    if (string.IsNullOrWhiteSpace(targetUsername)) targetUsername = sourceUsername;
+        //    if (string.IsNullOrWhiteSpace(targetPassword)) targetPassword = sourcePassword;
 
-             var cloneOptions = new CloneOptions() { CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = sourceUsername, Password = sourcePassword } };
-            var pushOptions = new PushOptions() { CredentialsProvider = new CredentialsHandler((url, usernameFromUrl, types) => new UsernamePasswordCredentials() { Username = targetUsername, Password = targetPassword }) };
+        //     var cloneOptions = new CloneOptions() { CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = sourceUsername, Password = sourcePassword } };
+        //    var pushOptions = new PushOptions() { CredentialsProvider = new CredentialsHandler((url, usernameFromUrl, types) => new UsernamePasswordCredentials() { Username = targetUsername, Password = targetPassword }) };
 
 
-            using (var tmpDir = new TemporaryDirectory())
-            {
-                var path=Repository.Clone(sourceUrl, tmpDir.FullName, cloneOptions);
+        //    using (var tmpDir = new TemporaryDirectory())
+        //    {
+        //        var path=Repository.Clone(sourceUrl, tmpDir.FullName, cloneOptions);
 
-                using (var sourceRepo = new Repository(path))
-                {
-                    var remote=sourceRepo.Network.Remotes.Add("origin1", targetUrl);
-                    sourceRepo.Network.Push(remote, @"refs/heads/master", pushOptions);
-                }
-            }
-        }
+        //        using (var sourceRepo = new Repository(path))
+        //        {
+        //            var remote=sourceRepo.Network.Remotes.Add("origin1", targetUrl);
+        //            sourceRepo.Network.Push(remote, @"refs/heads/master", pushOptions);
+        //        }
+        //    }
+        //}
     }
 }
