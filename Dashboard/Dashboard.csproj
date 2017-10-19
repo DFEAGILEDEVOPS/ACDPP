@@ -6,11 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Classes\GovNotifyAPI.cs" />
-    <Compile Remove="Classes\IGovNotifyAPI.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Remove="wwwroot\css\application.css.New" />
     <Content Remove="wwwroot\css\site.css" />
   </ItemGroup>
@@ -42,6 +37,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Extensions\Extensions.csproj" />
+    <ProjectReference Include="..\Notify.NetCore2\Notify.NetCore2.csproj" />
   </ItemGroup>
 
   <ItemGroup>

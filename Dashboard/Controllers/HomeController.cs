@@ -88,16 +88,16 @@ namespace Dashboard.Controllers
                     }
 
                     //Send the Email
-                    //var notify = new GovNotifyAPI();
+                    var notify = new GovNotifyAPI();
                     var projectUrl = $"https://{VSTSManager.Account}.visualstudio.com/{WebUtility.UrlEncode(project.Name)}";
                     foreach (var member in model.TeamMembers)
                     {
-                        //var personalisation = new Dictionary<string, dynamic> { {"name",member.Name}, { "email", member.Email }, { "project", model.TeamProjectName }, { "projecturl", project.Url }, { "giturl", repo.RemoteUrl }, { "appurl", "https://HelloWorld1.com" } };
-                        //notify.SendEmail("stephen.mccabe@education.gov.uk", AppSettings.WelcomeTemplateId, personalisation);
+                        var personalisation = new Dictionary<string, dynamic> { {"name",member.Name}, { "email", member.Email }, { "project", model.TeamProjectName }, { "projecturl", projectUrl }, { "giturl", repo.RemoteUrl }, { "appurl", "https://HelloWorld.com" } };
+                        notify.SendEmail("stephen.mccabe@education.gov.uk", AppSettings.WelcomeTemplateId, personalisation);
 
-                        var html = Properties.Resources.Welcome;
-                        html = html.ReplaceI("((name))", member.Name).ReplaceI("((email))", member.Email).ReplaceI("((project))", model.TeamProjectName).ReplaceI("((projecturl))", projectUrl).ReplaceI("((appurl))", "https://google.com").ReplaceI("((giturl))", repo.RemoteUrl);
-                        Email.QuickSend("Welcome to the Platform Thing", "stephen.mccabe@cadenceinnova.com", "The Platform Thing", null, $"{member.Name}<{member.Email}>", html, AppSettings.SmtpServer, AppSettings.SmtpUsername, AppSettings.SmtpPassword);
+                        //var html = Properties.Resources.Welcome;
+                        //html = html.ReplaceI("((name))", member.Name).ReplaceI("((email))", member.Email).ReplaceI("((project))", model.TeamProjectName).ReplaceI("((projecturl))", projectUrl).ReplaceI("((appurl))", "https://google.com").ReplaceI("((giturl))", repo.RemoteUrl);
+                        //Email.QuickSend("Welcome to the Platform Thing", "stephen.mccabe@cadenceinnova.com", "The Platform Thing", null, $"{member.Name}<{member.Email}>", html, AppSettings.SmtpServer, AppSettings.SmtpUsername, AppSettings.SmtpPassword);
                     }
                     return View("CustomError",new CustomErrorViewModel {  Title="Complete", Subtitle="Project successfully created", Description="Your project was successfully created and welcome emails sent to the team members.",  CallToAction="Create another project...", ActionText="Continue", ActionUrl=Request.GetDisplayUrl()});
                 }
