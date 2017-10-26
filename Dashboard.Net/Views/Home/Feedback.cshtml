@@ -1,0 +1,66 @@
+﻿@model Dashboard.Net.Models.FeedbackViewModel
+@{
+    ViewBag.Title = "Send us feedback - The Platform Thing";
+}
+
+<main id="content" role="main">
+    @using (Html.BeginForm())
+    {
+        @Html.ValidationSummary()
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(model=>model.SourceUrl)
+
+        <div class="grid-row">
+            <div class="column-two-thirds">
+
+                <h1 class="heading-large">
+                    Send us feedback
+                </h1>
+
+                <h2 class="heading-medium">Please take a moment to tell us about your experience, what worked and what didn't.</h2>
+                <fieldset>
+                    <legend class="group text">
+                    </legend>
+                    <div class="form-group">
+                        <label class="form-label text" for="details">
+                            <span class="visuallyhidden">Your feedback<br></span>
+                            <span class="form-hint">2000 characters max<br></span>
+                        </label>
+                        @Html.ValidationMessageFor(model => model.Details, "", new { @class = "error-danger" })
+                        <div class="col-md-10">
+                            @Html.TextAreaFor(model => model.Details, 10, 67, new { @class = "form-control-3-4", maxlength = 2000 })
+                        </div>
+                    </div>
+                </fieldset>
+
+                <p>We won't respond to your feedback directly but will use it to improve this service. If you are happy to be contacted to give further feedback, please leave your email address and/or phone number.</p>
+
+                <fieldset>
+                    
+                    <div class="form-group form-group-compound">
+                        @Html.LabelFor(model => model.EmailAddress, "Your email address (optional)", new { @class = "form-label col-md-2" })
+                        @Html.ValidationMessageFor(model => model.EmailAddress, "", new { @class = "error-danger" })
+                        <div class="col-md-10">
+                            @Html.TextBoxFor(model => model.EmailAddress, new { @class = "form-control" })
+                        </div>
+                    </div>
+
+                    <div class="form-group form-group-compound">
+                        @Html.LabelFor(model => model.PhoneNumber, "Your phone number (optional)", new { @class = "form-label col-md-2" })
+                        @Html.ValidationMessageFor(model => model.PhoneNumber, "", new { @class = "error-danger" })
+                        <div class="col-md-10">
+                            @Html.TextBoxFor(model => model.PhoneNumber, new { @class = "form-control" })
+                        </div>
+                    </div>
+
+                </fieldset>
+                <p>
+                    <input class="button" type="submit" role="button" name="command" value="Send feedback"/>
+                </p>
+                <p>
+                    <a href="javascript:window.open('','_self').close();">Close window</a>
+                </p>
+            </div>
+        </div>
+    }
+</main>

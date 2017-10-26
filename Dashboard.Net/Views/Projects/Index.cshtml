@@ -1,0 +1,44 @@
+﻿@{
+    ViewData["Title"] = "The Platform Thing: Projects";
+    ViewData["Title"] = "Projects - The Platform Thing";
+}
+@model Dashboard.Net.Models.ProjectsViewModel
+@using Extensions
+<main id="content" role="main">
+    <div class="grid-row">
+        <div class="column-two-thirds">
+            @using (Html.BeginForm(null, null, FormMethod.Post, new { autocomplete = "off" }))
+            {
+                @Html.ValidationSummary()
+                @Html.AntiForgeryToken()
+
+                <h1 class="heading-large">
+                    Projects
+                </h1>
+                if (Model.Count == 0)
+                {
+                    <div>
+                        No projects found
+                    </div>
+                }
+                else
+                {
+                    for (var i = 0; i < Model.Count; i++)
+                    {
+                        var project = Model[i];
+                    <div>
+                        <a href="@Url.Action("Edit", new { id = project.Id })" title="Make changes to this project">@project.Name</a> <span style="font-size:small;color:gray">(created: @project.Properties["Created Date"].ToDateTime().ToString("d MMM yyyy"))</span><br />
+                        @project.Description
+                    </div>
+                    }
+                }
+                <fieldset>
+                    <div class="form-group">
+                        <a href="@Url.Action("Create")" title="Create a new project" class="button">Create Project</a>
+                    </div>
+                </fieldset>
+            }
+        </div>
+    </div>
+</main>
+

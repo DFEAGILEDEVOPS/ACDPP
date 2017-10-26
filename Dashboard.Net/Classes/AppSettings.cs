@@ -4,11 +4,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using Dashboard;
 using System.Configuration;
+using Extensions;
+using System.Reflection;
 
 namespace Dashboard.Classes
 {
-    public class AppSettings
+    internal class AppSettings
     {
+        public static string ProjectCreatedBy = ConfigurationManager.AppSettings["ProjectCreatedBy"].ToStringOr(Assembly.GetExecutingAssembly().GetName().Name);
+
         public static string VSTSPersonalAccessToken = ConfigurationManager.AppSettings["VSTSPersonalAccessToken"];
         public static string SourceRepoUsername = ConfigurationManager.AppSettings["SourceRepoUsername"];
         public static string SourceRepoPassword = ConfigurationManager.AppSettings["SourceRepoPassword"];

@@ -152,17 +152,24 @@
     <Compile Include="Classes\Enums.cs" />
     <Compile Include="Classes\GovNotifyAPI.cs" />
     <Compile Include="Classes\IGovNotifyAPI.cs" />
-    <Compile Include="Classes\VSTSManager.cs" />
+    <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Controllers\ProjectsController.cs" />
+    <Compile Include="Models\FeedbackViewModel.cs" />
+    <Compile Include="Models\ProjectViewModel.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Models\CustomErrorViewModel.cs" />
     <Compile Include="Models\ErrorViewModel.cs" />
-    <Compile Include="Models\ProjectViewModel.cs" />
+    <Compile Include="Models\ProjectsViewModel.cs" />
+    <Compile Include="Models\TeamMemberViewModel.cs" />
+    <Compile Include="Models\UserViewModel.cs" />
+    <Compile Include="Models\UsersViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Content\css\Glyphicons.css" />
     <Content Include="favicon.ico" />
     <Content Include="fonts\glyphicons-halflings-regular.svg" />
     <Content Include="Global.asax" />
@@ -222,11 +229,10 @@
     </Content>
     <Content Include="Views\Web.config" />
     <Content Include="Views\_ViewStart.cshtml" />
-    <Content Include="Views\Shared\Error.cshtml" />
+    <Content Include="Views\Home\Error.cshtml" />
     <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Home\About.cshtml" />
-    <Content Include="Views\Home\Contact.cshtml" />
-    <Content Include="Views\Home\Index.cshtml" />
+    <Content Include="Views\Projects\Project.cshtml" />
     <Content Include="Views\DfE\Layouts\template.cshtml" />
     <Content Include="Views\GovUK\Layouts\template.cshtml" />
     <Content Include="Views\GovUK\Partials\footer-support-links.cshtml" />
@@ -251,9 +257,15 @@
     <Content Include="Content\lib\jquery-validation\LICENSE.md" />
     <Content Include="Content\lib\jquery\.bower.json" />
     <Content Include="Content\lib\jquery\dist\jquery.min.map" />
+    <Content Include="Views\Admin\Users.cshtml" />
+    <Content Include="Views\Projects\Index.cshtml" />
+    <Content Include="Views\Home\ContactUs.cshtml" />
+    <Content Include="Views\Home\FeedbackSent.cshtml" />
+    <Content Include="Views\Home\Feedback.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
+    <Folder Include="NewFolder1\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="fonts\glyphicons-halflings-regular.woff" />
@@ -273,9 +285,9 @@
       <Project>{eb6ac325-f8fc-4b68-b6bd-c86437314e13}</Project>
       <Name>Extensions.Net</Name>
     </ProjectReference>
-    <ProjectReference Include="..\VstsManager.Net\VstsManager.Net.csproj">
+    <ProjectReference Include="..\VstsManager.Net\VstsApi.Net.csproj">
       <Project>{6eabf9cc-b87d-43c5-a67e-99dbb89679cb}</Project>
-      <Name>VstsManager.Net</Name>
+      <Name>VstsApi.Net</Name>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup>

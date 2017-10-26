@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.27004.2002
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard.Net", "Dashboard.Net\Dashboard.Net.csproj", "{3B45260F-ED17-4EA5-BB0F-43461C3E23DD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VstsManager.Net", "VstsManager.Net\VstsManager.Net.csproj", "{6EABF9CC-B87D-43C5-A67E-99DBB89679CB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VstsApi.Net", "VstsManager.Net\VstsApi.Net.csproj", "{6EABF9CC-B87D-43C5-A67E-99DBB89679CB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions.Net", "Extensions.Net\Extensions.Net.csproj", "{EB6AC325-F8FC-4B68-B6BD-C86437314E13}"
 EndProject

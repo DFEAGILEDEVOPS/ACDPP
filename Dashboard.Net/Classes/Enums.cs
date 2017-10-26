@@ -19,4 +19,13 @@ namespace Dashboard.Classes
         New,
         All
     }
+
+    public class ProjectProperties
+    {
+        public const string CreatedBy = "Created By";
+        public const string CreatedDate = "Created Date";
+        public const string CostCode= "Cost Code";
+
+        public static string[] All = new []{ CreatedBy, CreatedDate, CostCode };
+    }
 }

@@ -1,6 +1,6 @@
 using System;
 
-namespace Dashboard.Models
+namespace Dashboard.Net.Models
 {
     public class ErrorViewModel
     {

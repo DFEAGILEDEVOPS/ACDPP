@@ -13,6 +13,9 @@
 <head>
     <title>@documentTitle</title>
     
+    <link rel="stylesheet" href="~/content/css/site.min.css" asp-append-version="true" />
+
+    <link href="/content/css/Glyphicons.css" media="screen" rel="stylesheet" type="text/css" />
     <link href="/content/css/Site.css" media="screen" rel="stylesheet" type="text/css" />
     <link href="/content/css/site-print.css" media="screen" rel="stylesheet" type="text/css" />
     <link href="/content/css/application.css" media="screen" rel="stylesheet" type="text/css" />
@@ -157,7 +160,7 @@
             <div class="footer-meta">
                 <div class="footer-meta-inner">
                     <ul>
-                        <li><a href="@Url.Action("Contact")" target="_blank">Contact Us</a></li>
+                        <li><a href="@Url.Action("ContactUs","Home")" target="_blank">Contact Us</a></li>
                     </ul>
                     <div class="open-government-licence">
                         <p class="logo"><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="license">Open Government Licence</a>

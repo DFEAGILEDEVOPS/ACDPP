@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.Net.Http.Headers;
+using Extensions.Net;
 
 namespace Extensions
 {
@@ -24,7 +25,7 @@ namespace Extensions
             }
         }
 
-        public static async Task<dynamic> CallJsonApiAsync(HttpMethod httpMethod, string url, string username=null, string password=null, object body=null)
+        public static async Task<dynamic> CallJsonApiAsync(HttpMethods httpMethod, string url, string username=null, string password=null, object body=null)
         {
             using (HttpClient client = new HttpClient())
             {
@@ -37,20 +38,22 @@ namespace Extensions
                 HttpContent httpContent=null;
                 if (body != null)
                 {
-                    if (!httpMethod.IsAny(HttpMethod.Post, HttpMethod.Put))throw new ArgumentOutOfRangeException(nameof(httpMethod), "HttpMethod must be Post or Put when a body is specified");
+                    if (!httpMethod.IsAny(HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch))throw new ArgumentOutOfRangeException(nameof(httpMethod), "HttpMethod must be Post, Put or Patch when a body is specified");
 
-                    var json = JsonConvert.SerializeObject(body);
-                    httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+                    var json = body is string ? body as string: JsonConvert.SerializeObject(body);
+                    if (string.IsNullOrWhiteSpace(json)) throw new ArgumentNullException("body","json body is empty");
+                    httpContent = new StringContent(json, Encoding.UTF8, httpMethod==HttpMethods.Patch ? "application/json-patch+json" : "application/json");
                 }
-                else if (httpMethod.IsAny(HttpMethod.Post, HttpMethod.Put))
-                    throw new ArgumentOutOfRangeException(nameof(body), "You must supply a body when Post or Put when a body is specified");
+                else if (httpMethod.IsAny(HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch))
+                    throw new ArgumentOutOfRangeException(nameof(body), "You must supply a body when Post, Put or Patch when a body is specified");
 
 
                 using (var response = (
-                    httpMethod == HttpMethod.Get ? client.GetAsync(url) :
-                    httpMethod == HttpMethod.Delete ? client.DeleteAsync(url) :
-                    httpMethod == HttpMethod.Post ? client.PostAsync(url, httpContent) :
-                    httpMethod == HttpMethod.Put ? client.PutAsync(url, httpContent):
+                    httpMethod == HttpMethods.Get ? client.GetAsync(url) :
+                    httpMethod == HttpMethods.Delete ? client.DeleteAsync(url) :
+                    httpMethod == HttpMethods.Post ? client.PostAsync(url, httpContent) :
+                    httpMethod == HttpMethods.Put ? client.PutAsync(url, httpContent):
+                    httpMethod == HttpMethods.Patch ? client.PatchAsync(url, httpContent) :
                     throw new ArgumentOutOfRangeException(nameof(httpMethod),"HttpMethod must be Get, Delete, Post or Put")
                     ).Result)
                 {

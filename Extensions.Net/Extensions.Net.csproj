@@ -57,15 +57,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\Class1.cs" />
     <Compile Include="Concurrency.cs" />
     <Compile Include="ConcurrentList.cs" />
     <Compile Include="ConcurrentSet.cs" />
     <Compile Include="Crypto.cs" />
     <Compile Include="DateRoutines.cs" />
     <Compile Include="Email.cs" />
+    <Compile Include="Enums.cs" />
     <Compile Include="Error.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="FileSystem.cs" />
+    <Compile Include="HttpClient.cs" />
     <Compile Include="Lists.cs" />
     <Compile Include="Misc.cs" />
     <Compile Include="NameValueList.cs" />
