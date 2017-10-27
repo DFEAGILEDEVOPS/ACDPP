@@ -10,9 +10,11 @@ using Dashboard.Net.Models;
 using VstsApi.Net;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using Extensions.Net.Classes;
 
 namespace Dashboard.Controllers
 {
+    [BasicAuthentication()]
     [RoutePrefix("projects")]
     [Route("{action}")]
     public class ProjectsController : Controller

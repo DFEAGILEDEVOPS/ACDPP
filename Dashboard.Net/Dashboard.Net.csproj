@@ -149,6 +149,7 @@
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="Classes\AppSettings.cs" />
+    <Compile Include="Classes\BasicAuthenticationAttribute.cs" />
     <Compile Include="Classes\Enums.cs" />
     <Compile Include="Classes\GovNotifyAPI.cs" />
     <Compile Include="Classes\IGovNotifyAPI.cs" />

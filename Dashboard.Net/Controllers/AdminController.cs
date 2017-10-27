@@ -10,9 +10,11 @@ using System.Net;
 using System.Web.Mvc;
 using Dashboard.Net.Models;
 using VstsApi.Net;
+using Extensions.Net.Classes;
 
 namespace Dashboard.Controllers
 {
+    [BasicAuthentication()]
     [RoutePrefix("admin")]
     [Route("{action}")]
     public class AdminController : Controller
