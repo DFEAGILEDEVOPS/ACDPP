@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -7,9 +8,9 @@ namespace Dashboard.Classes
 {
     public enum RoleTypes
     {
-        Unknown,
-        Developer,
-        Releaser
+        Developer=1,
+        Releaser=2,
+        Stakeholder=3
     }
 
     public enum StateFilters{

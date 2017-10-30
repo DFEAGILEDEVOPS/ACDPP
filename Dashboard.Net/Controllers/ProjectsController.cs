@@ -102,33 +102,54 @@ namespace Dashboard.Controllers
                     if (!oldProperties.ContainsKey(ProjectProperties.CostCode)) newProperties[ProjectProperties.CostCode] = model.CostCode;
                     if (newProperties.Count>0)VstsManager.SetProjectProperties(projectId, newProperties);
 
-                    //Get the teams
-                    var teams = VstsManager.GetTeams(projectId);
-
-                    var team = teams[0];
-
-                    //Get the members
-                    var members = VstsManager.GetMembers(projectId, team.Id);
-
                     //Get the Repo
                     var repos = VstsManager.GetRepos(projectId);
                     var repo = repos[0];
 
-                    //copy the sample repo
-
+                    //copy the sample repo if it doesnt already exist
                     if (string.IsNullOrWhiteSpace(repo.DefaultBranch))
                     {
                         var serviceEndpointId = VstsManager.CreateEndpoint(projectId, AppSettings.SourceRepoUrl, "", AppSettings.VSTSPersonalAccessToken);
                         VstsManager.ImportRepo(projectId, repo.Id, AppSettings.SourceRepoUrl, serviceEndpointId);
                     }
 
-                    //Create users
+                    //Get the team & members
+                    var teams = VstsManager.GetTeams(projectId);
+                    var team = teams[0];
+                    var members=VstsManager.GetMembers(projectId, team.Id);
+
+                    //Create the new users and add to team 
                     foreach (var member in model.TeamMembers)
                     {
-                        VstsManager.AddUserToAccount(VstsManager.Account,member.Email);
+                        //Ensure the user account exists
+                        var identity = VstsManager.GetAccountUserIdentity(VstsManager.Account,member.Email);
+                        if (identity == null)identity=VstsManager.CreateAccountIdentity(VstsManager.Account, member.Email);
+                        var licence=VstsManager.GetIdentityLicence(identity);
+
+                        //Add or change the licence type
+                        if (!member.Email.EqualsI(AppSettings.CurrentUserEmail) && licence == null || (licence.Value != member.LicenceType && !licence.Value.IsAny(VstsManager.LicenceTypes.Msdn, VstsManager.LicenceTypes.Advanced, VstsManager.LicenceTypes.Professional)))
+                            VstsManager.AssignLicenceToIdentity(identity, member.LicenceType);
+
+                        //Ensure the user is a member of the team
+                        if (!members.Any(m => m.UniqueName.EqualsI(member.Email,AppSettings.CurrentUserEmail)))
+                            VstsManager.AddUserToTeam(member.Email, team.Id);
                     }
 
-                    //TODO Remove old users
+                    members = VstsManager.GetMembers(projectId, team.Id);
+
+                    //Remove old users
+                    foreach (var member in members)
+                    {
+                        if (member.UniqueName.EqualsI(AppSettings.CurrentUserEmail))continue;
+
+                        if (!model.TeamMembers.Any(m => m.Email.EqualsI(member.UniqueName)))
+                        {
+                            VstsManager.RemoveUserFromTeam(projectId, team.Id, member.UniqueName);
+                            members = VstsManager.GetMembers(projectId, team.Id);
+                        };
+                    }
+
+                    //TODO Create the service endpoints into azure if they dont already exist
 
 
                     //Send the Email
@@ -192,7 +213,7 @@ namespace Dashboard.Controllers
                 VstsManager.DeleteProject(model.Id);
                 return View("CustomError", new CustomErrorViewModel { Title = "Complete", Subtitle = "Project successfully deleted", Description = $"Your project was successfully deleted.", CallToAction = "View projects...", ActionText = "Continue", ActionUrl = Url.Action("Index") });
             }
-            return Create(model, "Save Changes");
+            return Create(model, command);
         }
     }
 }

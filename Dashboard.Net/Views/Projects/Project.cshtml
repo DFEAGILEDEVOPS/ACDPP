@@ -81,10 +81,7 @@
                                         @Html.TextBoxFor(model => Model.TeamMembers[i].Email, new { @class = "form-control", placeholder = "email address", style = "width:100%" })
                                     </td>
                                     <td>
-                                        <select class="form-control" id="select-box" name="select-box" style="width:100%">
-                                            <option>Developer</option>
-                                            <option>Stakeholder</option>
-                                        </select>
+                                        @Html.EnumDropDownListFor(model => Model.TeamMembers[i].Role, new { @class = "form-control", style = "width:100%" })
                                     </td>
                                     <td>
                                         @if (i<Model.TeamMembers.Count - 1)

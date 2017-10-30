@@ -13,6 +13,7 @@ namespace Dashboard.Classes
     {
         public static string ProjectCreatedBy = ConfigurationManager.AppSettings["ProjectCreatedBy"].ToStringOr(Assembly.GetExecutingAssembly().GetName().Name);
 
+        public static string CurrentUserEmail = ConfigurationManager.AppSettings["CurrentUserEmail"];
         public static string VSTSPersonalAccessToken = ConfigurationManager.AppSettings["VSTSPersonalAccessToken"];
         public static string SourceRepoUsername = ConfigurationManager.AppSettings["SourceRepoUsername"];
         public static string SourceRepoPassword = ConfigurationManager.AppSettings["SourceRepoPassword"];
