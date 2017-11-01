@@ -43,6 +43,7 @@ namespace Extensions
                     var json = body is string ? body as string: JsonConvert.SerializeObject(body);
                     if (string.IsNullOrWhiteSpace(json)) throw new ArgumentNullException("body","json body is empty");
                     httpContent = new StringContent(json, Encoding.UTF8, httpMethod==HttpMethods.Patch ? "application/json-patch+json" : "application/json");
+
                 }
                 else if (httpMethod.IsAny(HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch))
                     throw new ArgumentOutOfRangeException(nameof(body), "You must supply a body when Post, Put or Patch when a body is specified");

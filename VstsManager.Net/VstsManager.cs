@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.TeamFoundation;
 using Microsoft.TeamFoundation.Framework.Common;
 using Microsoft.VisualStudio.Services.Identity;
@@ -10,13 +9,17 @@ using Microsoft.VisualStudio.Services.Licensing;
 using Microsoft.VisualStudio.Services.Licensing.Client;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.Common;
-using System.Net.Http;
 using Extensions;
 using System.Configuration;
-using VstsApi.Net.Classes.Build;
 using Task = System.Threading.Tasks.Task;
 using System.Collections.Specialized;
 using Extensions.Net;
+using Microsoft.TeamFoundation.Core.WebApi;
+using Microsoft.VisualStudio.Services.Operations;
+using System.Threading.Tasks;
+using System.Threading;
+using Newtonsoft.Json;
+using System.Net.Http;
 
 namespace VstsApi.Net
 {
@@ -28,9 +31,11 @@ namespace VstsApi.Net
         public static string InstanceUrl = $"https://{Account}.visualstudio.com/";
         public static string CollectionUrl = $"{InstanceUrl}DefaultCollection";
         public static string VSTSPersonalAccessToken = ConfigurationManager.AppSettings["VSTSPersonalAccessToken"];
+        private static readonly int intervalInSec=2;
+        private static readonly int maxOpTimeInSeconds=60;
 
         #region Classes
-        
+
         public enum LicenceTypes
         {
             Stakeholder=1,
@@ -47,6 +52,8 @@ namespace VstsApi.Net
             public string Description { get; set; }
             public string State { get; set; }
             public string Url { get; set; }
+            public Dictionary<string,string> Links { get; set; }
+            public string DefaultTeamId { get; set; }
         }
         public class Team
         {
@@ -323,7 +330,28 @@ namespace VstsApi.Net
             return results;
         }
 
-        public static string CreateProject(string name, string description = null)
+        public static Project GetProject(string projectId)
+        {
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{CollectionUrl}/_apis/projects/{projectId}?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var result=new Project()
+            {
+                Id = (string)json.id,
+                Name = (string)json.name,
+                Description = (string)json.description,
+                State = (string)json.state,
+                Url = (string)json.url
+            };
+            result.Links = new Dictionary<string, string>();
+            foreach(var link in json._links)
+            {
+                var key = (string)link.Name;
+                var value = (string)link.Value.href;
+                result.Links[key] = value;
+            }
+            return result;
+        }
+
+        public static Project CreateProject(string name, string description = null)
         {
             var body = new
             {
@@ -343,7 +371,90 @@ namespace VstsApi.Net
             };
 
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{CollectionUrl}/_apis/projects/?api-version={ApiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            var projectId=(string)json.id;
+
+            DateTime expiration = DateTime.Now.AddSeconds(maxOpTimeInSeconds);
+            Project project = null;
+            while (true)
+            {
+                
+                try
+                {
+                    project = GetProject(name);
+                }
+                catch (Exception ex)
+                {
+                    //404 occurs immediatly as project can be found
+                    if (ex.InnerException==null || !(ex.InnerException is HttpRequestException) || !ex.InnerException.Message.ContainsI("404"))throw;
+                }
+                if (project!=null && project.State.EqualsI("WellFormed")) return project;
+                if (DateTime.Now > expiration)throw new Exception(String.Format($"Operation {nameof(CreateProject)} did not complete in {maxOpTimeInSeconds} seconds. Please try again."));
+                Thread.Sleep(intervalInSec * 1000);
+            }
+        }
+
+        public static string EditProject(string projectId, string name=null, string description = null)
+        {
+            throw new NotImplementedException("This keeps returning 500 Internal error");
+
+            var apiVersion = "2.0-preview";
+
+            var body = new
+            {
+                name,
+                description
+            };
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Patch, $"{CollectionUrl}/_apis/projects/{projectId}?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
             return json.id;
+        }
+
+        private static async Task<Operation> WaitForLongRunningOperation(VssConnection connection, Guid operationId, int interavalInSec = 5, int maxTimeInSeconds = 60, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException("This keeps hanging on GetOperation");
+            OperationsHttpClient operationsClient = connection.GetClient<OperationsHttpClient>();
+            DateTime expiration = DateTime.Now.AddSeconds(maxTimeInSeconds);
+            while (true)
+            {
+                Operation operation = await operationsClient.GetOperation(operationId, cancellationToken);
+
+                if (!operation.Completed)
+                {
+                    await Task.Delay(interavalInSec * 1000);
+
+                    if (DateTime.Now > expiration)
+                    {
+                        throw new Exception(String.Format("Operation did not complete in {0} seconds.", maxTimeInSeconds));
+                    }
+                }
+                else
+                {
+                    return operation;
+                }
+            }
+        }
+     
+        public static bool EditProject(Project project, string name=null, string description=null)
+        {
+            if (project.Name == name && project.Description == description) return true;
+            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(description)) throw new ArgumentNullException();
+
+            using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+            {
+                var client = connection.GetClient<ProjectHttpClient>();
+                TeamProject updatedProject = new TeamProject();
+
+                if (!string.IsNullOrWhiteSpace(name) && name!=project.Name) updatedProject.Name = name;
+                if (!string.IsNullOrWhiteSpace(description) && description!=project.Description) updatedProject.Description = description;
+
+                // Queue the update operation
+                Guid updateOperationId = client.UpdateProject(new Guid(project.Id), updatedProject).Result.Id;
+
+                // Check the operation status every 2 seconds (for up to 30 seconds)
+                //Operation detailedUpdateOperation = WaitForLongRunningOperation(connection, updateOperationId, 2, 30).Result;
+
+                return true; //detailedUpdateOperation.Status == OperationStatus.Succeeded;
+            }
         }
 
         public static string DeleteProject(string projectId)
@@ -496,6 +607,17 @@ namespace VstsApi.Net
             return results;
         }
 
+        public static string CreateRepo(string projectId, string name)
+        {
+            var body = new
+            {
+                name,
+                project = new {id=projectId }
+            };
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{CollectionUrl}/{projectId}/_apis/git/repositories?api-version={ApiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            return json.id;
+        }
         public static string ImportRepo(string projectId, string repoId, string sourceUrl, string serviceEndpointId)
         {
             const string apiVersion = "3.0-preview";

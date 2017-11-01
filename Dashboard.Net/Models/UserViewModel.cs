@@ -21,7 +21,7 @@ namespace Dashboard.Net.Models
         [Required(AllowEmptyStrings = false)]
         public string Email { get; set; }
 
-        public RoleTypes Role { get; set; } = RoleTypes.Stakeholder;
+        public RoleTypes Role { get; set; } = RoleTypes.Developer;
 
 
     }

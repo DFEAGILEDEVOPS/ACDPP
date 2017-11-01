@@ -25,23 +25,23 @@
                 <fieldset>
                     <legend class="visuallyhidden">Project Details</legend>
                     <div class="form-group">
-                        @Html.LabelFor(model => model.CostCode, "Enter the cost code for this project", htmlAttributes: new { @class = "form-label col-md-10" })
+                        @Html.LabelFor(model => model.CostCode, "Enter the cost code for this project", htmlAttributes: new { @class = "form-label" })
                         @Html.ValidationMessageFor(model => model.CostCode, null, new { @class = "error-danger" })
-                        <div class="col-md-10">
-                            @Html.TextBoxFor(model => model.CostCode,new { @class = "form-control" })
+                        <div>
+                            @Html.TextBoxFor(model => model.CostCode,new { @class = "form-control-1-4" })
                         </div>
                     </div>
                     <div class="form-group">
                         @Html.LabelFor(model => model.Name, "Enter the title of your project name", htmlAttributes: new { @class = "form-label col-md-10" })
                         @Html.ValidationMessageFor(model => model.Name, "", new { @class = "error-danger" })
-                        <div class="col-md-10">
+                        <div>
                             @Html.TextBoxFor(model => model.Name, new { @class = "form-control" })
                         </div>
                     </div>
                     <div class="form-group">
                         @Html.LabelFor(model => model.Name, "Enter a description for your project (optional)", htmlAttributes: new { @class = "form-label col-md-10" })
                         @Html.ValidationMessageFor(model => model.Description, "", new { @class = "error-danger" })
-                        <div class="col-md-10">
+                        <div>
                             @Html.TextAreaFor(model => model.Description, new { @class = "form-control" })
                         </div>
                     </div>
@@ -60,12 +60,17 @@
                                 <th class="" scope="col">Last name</th>
                                 <th class="" scope="col">Email address</th>
                                 <th class="" scope="col">Type</th>
-                                <th></th>
+                                <td>
+                                    <button type="submit" class="link-button" name="command" value="Add" title="Add another team member">
+                                        <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+                                    </button>
+                                </td>
                             </tr>
                         </thead>
                         <tbody>
                             @for (var i = 0; i < Model.TeamMembers.Count; i++)
                             {
+                                @Html.HiddenFor(m => Model.TeamMembers[i].TeamMemberId)
                                 <tr>
                                     <th scope="row">@(i+1)</th>
                                     <td class="">
@@ -84,18 +89,9 @@
                                         @Html.EnumDropDownListFor(model => Model.TeamMembers[i].Role, new { @class = "form-control", style = "width:100%" })
                                     </td>
                                     <td>
-                                        @if (i<Model.TeamMembers.Count - 1)
-                                        {
-                                            <button type="submit" class="link-button" name="command" value="Remove:@i" title="Remove this team member" onclick="if (!confirm('Are you sure you want to remove this member from the team?')) return false;">
-                                                <span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
-                                            </button>
-                                        }
-                                        else
-                                        {
-                                            <button type="submit" class="link-button" name="command" value="Add" title="Add another team member">
-                                                <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
-                                            </button>
-                                        }
+                                        <button type="submit" class="link-button" name="command" value="Remove:@i" title="Remove this team member" onclick="if (!confirm('Are you sure you want to remove this member from the team?')) return false;">
+                                            <span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+                                        </button>
                                     </td>
                                 </tr>
                             }

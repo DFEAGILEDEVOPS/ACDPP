@@ -32,10 +32,16 @@ namespace Dashboard.Controllers
                 var newProject = new ProjectViewModel();
                 newProject.Properties = VstsManager.GetProjectProperties(project.Id, ProjectProperties.All);
 
-                if (newProject.Properties[ProjectProperties.CreatedBy] != AppSettings.ProjectCreatedBy) continue;
-                newProject.Name = project.Name;
                 newProject.Id = project.Id;
+                newProject.Name = project.Name;
+                newProject.Description = project.Description;
                 newProject.CostCode = newProject.Properties[ProjectProperties.CostCode];
+                if (newProject.Properties[ProjectProperties.CreatedBy] == AppSettings.ProjectCreatedBy)
+                {
+                    var p = VstsManager.GetProject(newProject.Id);
+                    newProject.Url = p.Links["web"];
+                }
+
                 model.Add(newProject);
             }
             return View(model);
@@ -44,8 +50,17 @@ namespace Dashboard.Controllers
         [HttpGet]
         public ActionResult Create()
         {
-            var model = new ProjectViewModel() { Name= "TestProject1", CostCode="123456" };
-            model.TeamMembers = new List<TeamMemberViewModel>() { new TeamMemberViewModel() { FirstName="Stephen",LastName="McCabe", Email="stephen.mccabe@cadenceinnova.com" }  };
+            var model = new ProjectViewModel();
+            model.CostCode = Crypto.GeneratePasscode("0123456789".ToCharArray(), 8);
+            int c = 1;
+            string name = $"TestProject{c}";
+            var projects = VstsManager.GetProjects();
+            while (projects.Any(p => p.Name.Equals(name)))
+            {
+                name = $"TestProject{++c}";
+            }
+            model.Name = name;
+            model.TeamMembers = new List<TeamMemberViewModel>() { new TeamMemberViewModel()};
             return View("Project",model);
         }
 
@@ -63,6 +78,8 @@ namespace Dashboard.Controllers
                 {
                     var i = command.AfterFirst(":").ToInt32(-1);
                     if (i > -1) model.TeamMembers.RemoveAt(i);
+                    if (model.TeamMembers.Count<1)model.TeamMembers = new List<TeamMemberViewModel>() { new TeamMemberViewModel() };
+
                     ModelState.Clear();
                 }
                 else if (command.EqualsI("Create Project","Save Changes"))
@@ -73,50 +90,84 @@ namespace Dashboard.Controllers
                         if (string.IsNullOrWhiteSpace(member.Name) && string.IsNullOrWhiteSpace(member.Email)) continue;
                         c++;
                     }
-                    if (c == 0)ModelState.AddModelError("", "You must enter at least one team member member");
+                    if (c == 0)ModelState.AddModelError("", "You must enter at least one team member");
                     if (!ModelState.IsValid)return View("Project",model);
 
                     //Check project name doesnt already exist
                     var projects = VstsManager.GetProjects();
-                    var project = projects.FirstOrDefault(p => p.Name.ToLower() == model.Name.ToLower());
-                    if (project != null && !model.Name.StartsWithI("TestProject"))
+
+                    var project= !string.IsNullOrWhiteSpace(model.Id) ? projects.FirstOrDefault(p => p.Id == model.Id) : projects.FirstOrDefault(p => p.Name.EqualsI(model.Name));
+                    if (project != null)
+                    {
+                        project = VstsManager.GetProject(project.Id); //Get the links etc
+                        if (string.IsNullOrWhiteSpace(model.Id))model.Id = project.Id;
+                    }
+
+                    if (projects.Any(p => p.Name.ToLower() == model.Name.ToLower() && (project==null || p.Id!=project.Id)))
                     {
                         ModelState.AddModelError(nameof(model.Name), "A project with this name already exists");
                         return View("Project",model);
                     }
 
                     //Create Project (if it doesnt already exist)
-                    string projectId = project == null ? null : project.Id;
-                    if (project == null)
+
+                    string newProjectId = null;
+                    try
                     {
-                        projectId = VstsManager.CreateProject(model.Name, model.Description);
-                        projects = VstsManager.GetProjects();
-                        project = projects.FirstOrDefault(p => p.Id == projectId);
+                        if (string.IsNullOrWhiteSpace(model.Id))
+                        {
+                            project = VstsManager.CreateProject(model.Name, model.Description);
+                            model.Id = project.Id;
+                            newProjectId = project.Id;
+                        }
+                        else if (!model.Name.Equals(project.Name) || model.Description!=project.Description)
+                        {
+                            if (!VstsManager.EditProject(project, model.Name, model.Description)) throw new Exception("Could not update project name or description");
+                        }
+                        if (!project.State.EqualsI("WellFormed")) throw new Exception("Project has not yet completed creation. Please try again");
+
+                        //Add the special properties
+                        var oldProperties = VstsManager.GetProjectProperties(model.Id, ProjectProperties.All);
+                        var newProperties = new NameValueCollection();
+                        if (!oldProperties.ContainsKey(ProjectProperties.CreatedBy)) newProperties[ProjectProperties.CreatedBy] = AppSettings.ProjectCreatedBy;
+                        if (!oldProperties.ContainsKey(ProjectProperties.CreatedDate)) newProperties[ProjectProperties.CreatedDate] = DateTime.Now.ToString();
+                        if (!oldProperties.ContainsKey(ProjectProperties.CostCode)) newProperties[ProjectProperties.CostCode] = model.CostCode;
+                        if (newProperties.Count > 0) VstsManager.SetProjectProperties(model.Id, newProperties);
+                        //Marke the project as created properly
+                        newProjectId = null;
+                    }
+                    finally
+                    {
+                        //Delete the project if we couldnt create properly
+                        if (!string.IsNullOrWhiteSpace(newProjectId)) VstsManager.DeleteProject(newProjectId);
                     }
 
-                    //Add the special properties
-                    var oldProperties = VstsManager.GetProjectProperties(projectId, ProjectProperties.All);
-                    var newProperties = new NameValueCollection();
-                    if (!oldProperties.ContainsKey(ProjectProperties.CreatedBy)) newProperties[ProjectProperties.CreatedBy] = AppSettings.ProjectCreatedBy;
-                    if (!oldProperties.ContainsKey(ProjectProperties.CreatedDate)) newProperties[ProjectProperties.CreatedDate] = DateTime.Now.ToString();
-                    if (!oldProperties.ContainsKey(ProjectProperties.CostCode)) newProperties[ProjectProperties.CostCode] = model.CostCode;
-                    if (newProperties.Count>0)VstsManager.SetProjectProperties(projectId, newProperties);
-
                     //Get the Repo
-                    var repos = VstsManager.GetRepos(projectId);
-                    var repo = repos[0];
+                    var repos = VstsManager.GetRepos(model.Id);
+                    var repo = repos.Count==0 ? null : repos[0];
+
+                    //Create a new repo
+                    if (repo == null)
+                    {
+                        var repoId = VstsManager.CreateRepo(model.Id, project.Name);
+                        if (string.IsNullOrWhiteSpace(repoId)) throw new Exception($"Could not create repo '{project.Name}'");
+                        repo = repos.Count == 0 ? null : repos[0];
+                    }
+                    if (repo == null) throw new Exception("Could not create repo '{project.Name}'");
 
                     //copy the sample repo if it doesnt already exist
                     if (string.IsNullOrWhiteSpace(repo.DefaultBranch))
                     {
-                        var serviceEndpointId = VstsManager.CreateEndpoint(projectId, AppSettings.SourceRepoUrl, "", AppSettings.VSTSPersonalAccessToken);
-                        VstsManager.ImportRepo(projectId, repo.Id, AppSettings.SourceRepoUrl, serviceEndpointId);
+                        var serviceEndpointId = VstsManager.CreateEndpoint(model.Id, AppSettings.SourceRepoUrl, "", AppSettings.VSTSPersonalAccessToken);
+                        VstsManager.ImportRepo(model.Id, repo.Id, AppSettings.SourceRepoUrl, serviceEndpointId);
                     }
 
+                    //TODO Create the sample build definition passing in tproject arguments
+
                     //Get the team & members
-                    var teams = VstsManager.GetTeams(projectId);
+                    var teams = VstsManager.GetTeams(model.Id);
                     var team = teams[0];
-                    var members=VstsManager.GetMembers(projectId, team.Id);
+                    var members=VstsManager.GetMembers(model.Id, team.Id);
 
                     //Create the new users and add to team 
                     foreach (var member in model.TeamMembers)
@@ -131,11 +182,16 @@ namespace Dashboard.Controllers
                             VstsManager.AssignLicenceToIdentity(identity, member.LicenceType);
 
                         //Ensure the user is a member of the team
-                        if (!members.Any(m => m.UniqueName.EqualsI(member.Email,AppSettings.CurrentUserEmail)))
+                        if (!members.Any(m => m.UniqueName.EqualsI(member.Email, AppSettings.CurrentUserEmail)))
+                        {
                             VstsManager.AddUserToTeam(member.Email, team.Id);
+                        }
                     }
 
-                    members = VstsManager.GetMembers(projectId, team.Id);
+                    //Get the new team members
+                    var newMembers = model.TeamMembers.Where(m=> !members.Any(m1=>m1.UniqueName.EqualsI(m.Email))).ToList();
+
+                    members = VstsManager.GetMembers(model.Id, team.Id);
 
                     //Remove old users
                     foreach (var member in members)
@@ -144,8 +200,8 @@ namespace Dashboard.Controllers
 
                         if (!model.TeamMembers.Any(m => m.Email.EqualsI(member.UniqueName)))
                         {
-                            VstsManager.RemoveUserFromTeam(projectId, team.Id, member.UniqueName);
-                            members = VstsManager.GetMembers(projectId, team.Id);
+                            VstsManager.RemoveUserFromTeam(model.Id, team.Id, member.UniqueName);
+                            members = VstsManager.GetMembers(model.Id, team.Id);
                         };
                     }
 
@@ -153,18 +209,17 @@ namespace Dashboard.Controllers
 
 
                     //Send the Email
-                    if (command == "Create Project")
+                    if (newMembers.Count>0)
                     {
-                        var notify = new GovNotifyAPI();
-                        var projectUrl = $"https://{VstsManager.Account}.visualstudio.com/{WebUtility.UrlEncode(project.Name)}";
-                        foreach (var member in model.TeamMembers)
-                        {
-                            var personalisation = new Dictionary<string, dynamic> { { "name", member.Name }, { "email", member.Email }, { "project", model.Name }, { "projecturl", projectUrl }, { "giturl", repo.RemoteUrl }, { "appurl", "https://HelloWorld.com" } };
-                            notify.SendEmail("stephen.mccabe@education.gov.uk", AppSettings.WelcomeTemplateId, personalisation);
+                        var projectUrl = project.Links["web"];
+                        var appUrl = "https://HelloWorld.com";
+                        var gitUrl = repo.RemoteUrl;
 
-                            //var html = Properties.Resources.Welcome;
-                            //html = html.ReplaceI("((name))", member.Name).ReplaceI("((email))", member.Email).ReplaceI("((project))", model.TeamProjectName).ReplaceI("((projecturl))", projectUrl).ReplaceI("((appurl))", "https://google.com").ReplaceI("((giturl))", repo.RemoteUrl);
-                            //Email.QuickSend("Welcome to the Platform Thing", "stephen.mccabe@cadenceinnova.com", "The Platform Thing", null, $"{member.Name}<{member.Email}>", html, AppSettings.SmtpServer, AppSettings.SmtpUsername, AppSettings.SmtpPassword);
+                        var notify = new GovNotifyAPI();
+                        foreach (var member in newMembers)
+                        {
+                            var personalisation = new Dictionary<string, dynamic> { { "name", member.Name }, { "email", member.Email }, { "project", model.Name }, { "projecturl", projectUrl }, { "giturl", gitUrl }, { "appurl", appUrl } };
+                            notify.SendEmail(member.Email, AppSettings.WelcomeTemplateId, personalisation);
                         }
                     }
                     return View("CustomError",new CustomErrorViewModel {  Title="Complete", Subtitle=$"Project successfully {(command=="Save Changes" ? "saved" : "created")}", Description=$"Your project was successfully {(command == "Save Changes" ? "saved" : "created and welcome emails sent to the team members")}.",  CallToAction="View projects...", ActionText="Continue", ActionUrl=Url.Action("Index")});
@@ -193,7 +248,7 @@ namespace Dashboard.Controllers
             model.CostCode = properties[ProjectProperties.CostCode];
 
             var teams = VstsManager.GetTeams(project.Id);
-            if (teams.Count>0)model.TeamMembers = VstsManager.GetMembers(project.Id,teams[0].Id).Select(m=>new TeamMemberViewModel() { FirstName = m.DisplayName.BeforeFirst(" ").BeforeFirst("."), LastName = m.DisplayName.AfterFirst(" ").AfterFirst("."), Email = m.UniqueName }).ToList();
+            if (teams.Count>0)model.TeamMembers = VstsManager.GetMembers(project.Id,teams[0].Id).Select(m=>new TeamMemberViewModel() { TeamMemberId=m.Id, FirstName = m.DisplayName.BeforeFirst(" ").BeforeFirst("."), LastName = m.DisplayName.AfterFirst(" ").AfterFirst("."), Email = m.UniqueName }).ToList();
             if (model.TeamMembers.Count<1) model.TeamMembers = new List<TeamMemberViewModel>() { new TeamMemberViewModel()};
 
             return View("Project",model);

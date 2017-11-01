@@ -9,7 +9,7 @@ using System.Reflection;
 
 namespace Dashboard.Classes
 {
-    internal class AppSettings
+    public class AppSettings
     {
         public static string ProjectCreatedBy = ConfigurationManager.AppSettings["ProjectCreatedBy"].ToStringOr(Assembly.GetExecutingAssembly().GetName().Name);
 
