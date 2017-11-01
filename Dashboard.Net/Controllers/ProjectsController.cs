@@ -162,7 +162,8 @@ namespace Dashboard.Controllers
                         VstsManager.ImportRepo(model.Id, repo.Id, AppSettings.SourceRepoUrl, serviceEndpointId);
                     }
 
-                    //TODO Create the sample build definition passing in tproject arguments
+                    //Create the sample build definition passing in project arguments
+                    VstsManager.CloneBuild(AppSettings.SourceProjectName, AppSettings.SourceBuildName,project.Name,repo);
 
                     //Get the team & members
                     var teams = VstsManager.GetTeams(model.Id);
@@ -173,16 +174,16 @@ namespace Dashboard.Controllers
                     foreach (var member in model.TeamMembers)
                     {
                         //Ensure the user account exists
-                        var identity = VstsManager.GetAccountUserIdentity(VstsManager.Account,member.Email);
-                        if (identity == null)identity=VstsManager.CreateAccountIdentity(VstsManager.Account, member.Email);
+                        var identity = VstsManager.GetAccountUserIdentity(VstsManager.SourceAccountName,member.Email);
+                        if (identity == null)identity=VstsManager.CreateAccountIdentity(VstsManager.SourceAccountName, member.Email);
                         var licence=VstsManager.GetIdentityLicence(identity);
 
                         //Add or change the licence type
-                        if (!member.Email.EqualsI(AppSettings.CurrentUserEmail) && licence == null || (licence.Value != member.LicenceType && !licence.Value.IsAny(VstsManager.LicenceTypes.Msdn, VstsManager.LicenceTypes.Advanced, VstsManager.LicenceTypes.Professional)))
+                        if (!member.Email.EqualsI(AppSettings.VSTSAccountEmail) && licence == null || (licence.Value != member.LicenceType && !licence.Value.IsAny(VstsManager.LicenceTypes.Msdn, VstsManager.LicenceTypes.Advanced, VstsManager.LicenceTypes.Professional)))
                             VstsManager.AssignLicenceToIdentity(identity, member.LicenceType);
 
                         //Ensure the user is a member of the team
-                        if (!members.Any(m => m.UniqueName.EqualsI(member.Email, AppSettings.CurrentUserEmail)))
+                        if (!members.Any(m => m.UniqueName.EqualsI(member.Email, AppSettings.VSTSAccountEmail)))
                         {
                             VstsManager.AddUserToTeam(member.Email, team.Id);
                         }
@@ -196,7 +197,7 @@ namespace Dashboard.Controllers
                     //Remove old users
                     foreach (var member in members)
                     {
-                        if (member.UniqueName.EqualsI(AppSettings.CurrentUserEmail))continue;
+                        if (member.UniqueName.EqualsI(AppSettings.VSTSAccountEmail))continue;
 
                         if (!model.TeamMembers.Any(m => m.Email.EqualsI(member.UniqueName)))
                         {

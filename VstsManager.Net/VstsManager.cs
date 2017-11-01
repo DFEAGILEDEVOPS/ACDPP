@@ -20,17 +20,28 @@ using System.Threading.Tasks;
 using System.Threading;
 using Newtonsoft.Json;
 using System.Net.Http;
+using Microsoft.TeamFoundation.Build.WebApi;
 
 namespace VstsApi.Net
 {
     public class VstsManager
     {
-        public const string Account = "agilefactory";
-        const string ApiVersion = "1.0";
-        const string ProjectTemplateId = "24a1e994-d40e-4e78-804d-8fa89c4e6c1d";
-        public static string InstanceUrl = $"https://{Account}.visualstudio.com/";
-        public static string CollectionUrl = $"{InstanceUrl}DefaultCollection";
+        public static string SourceAccountName = ConfigurationManager.AppSettings["SourceAccountName"];
+        public static string SourceProjectName = ConfigurationManager.AppSettings["SourceProjectName"];
+        public static string SourceRepoName = ConfigurationManager.AppSettings["SourceRepoName"];
+        public static string SourceBuildName = ConfigurationManager.AppSettings["SourceBuildName"];
+
+        public static string VSTSAccountEmail = ConfigurationManager.AppSettings["VSTSAccountEmail"];
         public static string VSTSPersonalAccessToken = ConfigurationManager.AppSettings["VSTSPersonalAccessToken"];
+
+        public static string SourceInstanceUrl = $"https://{SourceAccountName}.visualstudio.com/";
+        public static string SourceProjectUrl = $"{SourceInstanceUrl}{SourceProjectName}";
+        public static string SourceCollectionUrl = $"{SourceInstanceUrl}DefaultCollection";
+        public static string SourceRepoUrl = $"{SourceProjectUrl}/_git/{SourceRepoName}";
+
+        public static string TargetProjectTemplateId = ConfigurationManager.AppSettings["TargetProjectTemplateId"];
+
+        const string ApiVersion = "1.0";
         private static readonly int intervalInSec=2;
         private static readonly int maxOpTimeInSeconds=60;
 
@@ -90,7 +101,7 @@ namespace VstsApi.Net
 
         public static Identity GetAccountUserIdentity(string accountName, string userEmail)
         {
-            using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var identityClient = connection.GetClient<IdentityHttpClient>();
                 return identityClient.ReadIdentitiesAsync(IdentitySearchFilter.AccountName, userEmail).Result.FirstOrDefault();                    
@@ -98,7 +109,7 @@ namespace VstsApi.Net
         }
         public static IdentitiesCollection GetAccountUserIdentities(string accountName)
         {
-            using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var identityClient = connection.GetClient<IdentityHttpClient>();
                 return identityClient.ReadIdentitiesAsync(IdentitySearchFilter.General,"").Result;
@@ -107,7 +118,7 @@ namespace VstsApi.Net
 
         public static Identity CreateAccountIdentity(string accountName, string userEmail)
         {
-            using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
 
                 // We need the clients for two services: Licensing and Identity
@@ -169,9 +180,41 @@ namespace VstsApi.Net
             }
         }
 
+        public static int CloneBuild(string sourceProjectName, string sourceBuildName, string targetProjectName, Repo repo)
+        {
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
+            {
+                var projectClient = connection.GetClientAsync<ProjectHttpClient>().Result;
+                var projects=projectClient.GetProjects(ProjectState.WellFormed).Result;
+                var sourceProject = projects.FirstOrDefault(p => p.Name.EqualsI(sourceProjectName));
+
+                var buildClient = connection.GetClientAsync<BuildHttpClient>().Result;
+                var sourceBuildRefs = buildClient.GetDefinitionsAsync(sourceProject.Id).Result;
+                var sourceBuildRef = sourceBuildRefs.FirstOrDefault(b=>b.Name.EqualsI(SourceBuildName));
+                var sourceBuild = buildClient.GetDefinitionAsync(sourceProject.Id,sourceBuildRef.Id).Result;
+
+                var targetProject = projects.FirstOrDefault(p => p.Name.EqualsI(targetProjectName));
+                var targetBuildRef = buildClient.GetDefinitionsAsync(targetProject.Id, sourceBuildName).Result.FirstOrDefault();
+                if (targetBuildRef != null) buildClient.DeleteDefinitionAsync(targetProject.Id, targetBuildRef.Id);
+
+                sourceBuild.Project = null;
+                sourceBuild.Queue=null;//TODO
+                sourceBuild.Repository.Id = repo.Id;
+                sourceBuild.Repository.Name = repo.Name;
+                sourceBuild.Repository.DefaultBranch = repo.DefaultBranch;
+                sourceBuild.Repository.Url = new Uri(repo.RemoteUrl);
+                var process=(DesignerProcess)sourceBuild.Process;
+                process.Phases[0].Steps.RemoveAt(5);
+
+                var targetBuild =buildClient.CreateDefinitionAsync(sourceBuild, targetProject.Id);
+                targetBuild.Wait();
+                return targetBuild.Id;
+            }
+        }
+
         public static void AssignLicenceToIdentity(Identity userIdentity, LicenceTypes licenceType = LicenceTypes.Basic)
         {
-            using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var licensingClient = connection.GetClient<LicensingHttpClient>();
 
@@ -197,7 +240,7 @@ namespace VstsApi.Net
 
         public static LicenceTypes? GetIdentityLicence(Identity userIdentity, LicenceTypes licenceType = LicenceTypes.Basic)
         {
-            using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var licensingClient = connection.GetClient<LicensingHttpClient>();
 
@@ -218,7 +261,7 @@ namespace VstsApi.Net
         {
             try
             {
-                using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+                using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
                 {
 
                     // We need the clients for two services: Licensing and Identity
@@ -314,7 +357,7 @@ namespace VstsApi.Net
         #region Projects
         public static List<Project> GetProjects()
         {
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{CollectionUrl}/_apis/projects/?api-version={ApiVersion}&stateFilter=All", password: VSTSPersonalAccessToken)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/_apis/projects/?api-version={ApiVersion}&stateFilter=All", password: VSTSPersonalAccessToken)).Result;
             var results = new List<Project>();
             foreach (var item in json.value)
             {
@@ -332,7 +375,7 @@ namespace VstsApi.Net
 
         public static Project GetProject(string projectId)
         {
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{CollectionUrl}/_apis/projects/{projectId}?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/_apis/projects/{projectId}?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
             var result=new Project()
             {
                 Id = (string)json.id,
@@ -365,12 +408,12 @@ namespace VstsApi.Net
                     },
                     processTemplate = new
                     {
-                        templateTypeId = ProjectTemplateId
+                        templateTypeId = TargetProjectTemplateId
                     }
                 }
             };
 
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{CollectionUrl}/_apis/projects/?api-version={ApiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/_apis/projects/?api-version={ApiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
             var projectId=(string)json.id;
 
             DateTime expiration = DateTime.Now.AddSeconds(maxOpTimeInSeconds);
@@ -405,7 +448,7 @@ namespace VstsApi.Net
                 description
             };
 
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Patch, $"{CollectionUrl}/_apis/projects/{projectId}?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Patch, $"{SourceCollectionUrl}/_apis/projects/{projectId}?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
             return json.id;
         }
 
@@ -439,7 +482,7 @@ namespace VstsApi.Net
             if (project.Name == name && project.Description == description) return true;
             if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(description)) throw new ArgumentNullException();
 
-            using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var client = connection.GetClient<ProjectHttpClient>();
                 TeamProject updatedProject = new TeamProject();
@@ -459,14 +502,14 @@ namespace VstsApi.Net
 
         public static string DeleteProject(string projectId)
         {
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Delete, $"{CollectionUrl}/_apis/projects/{projectId}?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Delete, $"{SourceCollectionUrl}/_apis/projects/{projectId}?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
             return json.id;
         }
 
         public static NameValueCollection GetProjectProperties(string projectId, params string[]keys)
         {
             var apiVersion = "4.0-preview";
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{InstanceUrl}/_apis/projects/{projectId}/properties?{(keys==null || keys.Length==0 ? "" : $"keys={keys.ToDelimitedString()}&")}api-version={apiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceInstanceUrl}/_apis/projects/{projectId}/properties?{(keys==null || keys.Length==0 ? "" : $"keys={keys.ToDelimitedString()}&")}api-version={apiVersion}", password: VSTSPersonalAccessToken)).Result;
             var results = new NameValueCollection();
             foreach (var item in json.value)
             {
@@ -489,7 +532,7 @@ namespace VstsApi.Net
                     value=properties[key]
                 });
             }
-            Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Patch, $"{InstanceUrl}/_apis/projects/{projectId}/properties?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body));
+            Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Patch, $"{SourceInstanceUrl}/_apis/projects/{projectId}/properties?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body));
         }
 
         public static string DeleteProjectProperties(string projectId, params string[] keys)
@@ -505,7 +548,7 @@ namespace VstsApi.Net
                     path = $"/{key}",
                 });
             }
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Patch, $"{InstanceUrl}/_apis/projects/{projectId}/properties?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Patch, $"{SourceInstanceUrl}/_apis/projects/{projectId}/properties?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
             return json.id;
         }
 
@@ -514,7 +557,7 @@ namespace VstsApi.Net
         #region Teams
         public static List<Team> GetTeams(string projectId)
         {
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{CollectionUrl}/_apis/projects/{projectId}/teams?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/_apis/projects/{projectId}/teams?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
             var results = new List<Team>();
             foreach (var item in json.value)
             {
@@ -532,7 +575,7 @@ namespace VstsApi.Net
 
         public static List<Member> GetMembers(string projectId, string teamId)
         {
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{CollectionUrl}/_apis/projects/{projectId}/teams/{teamId}/members?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/_apis/projects/{projectId}/teams/{teamId}/members?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
             var results = new List<Member>();
             foreach (var item in json.value)
             {
@@ -550,7 +593,7 @@ namespace VstsApi.Net
 
         public static bool RemoveUserFromTeam(string projectId, string teamId, string userEmail)
         {
-            using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var client = connection.GetClient<IdentityHttpClient>();
                 IdentitiesCollection identities = Task.Run(async () => await client.ReadIdentitiesAsync(IdentitySearchFilter.MailAddress, userEmail)).Result;
@@ -565,7 +608,7 @@ namespace VstsApi.Net
 
         public static void AddUserToTeam(string userEmail, string teamId)
         {
-            using (var connection = GetConnection(CollectionUrl, VSTSPersonalAccessToken))
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var client = connection.GetClient<IdentityHttpClient>();
                 IdentitiesCollection identities = Task.Run(async () => await client.ReadIdentitiesAsync(IdentitySearchFilter.MailAddress, userEmail)).Result;
@@ -583,7 +626,7 @@ namespace VstsApi.Net
         #region Repositories
         public static List<Repo> GetRepos(string projectId)
         {
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{CollectionUrl}/{projectId}/_apis/git/repositories?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{projectId}/_apis/git/repositories?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
             var results = new List<Repo>();
             foreach (var item in json.value)
             {
@@ -615,7 +658,7 @@ namespace VstsApi.Net
                 project = new {id=projectId }
             };
 
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{CollectionUrl}/{projectId}/_apis/git/repositories?api-version={ApiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{projectId}/_apis/git/repositories?api-version={ApiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
             return json.id;
         }
         public static string ImportRepo(string projectId, string repoId, string sourceUrl, string serviceEndpointId)
@@ -634,7 +677,7 @@ namespace VstsApi.Net
                     deleteServiceEndpointAfterImportIsDone = true
                 }
             };
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{CollectionUrl}/{projectId}/_apis/git/repositories/{repoId}/importRequests?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{projectId}/_apis/git/repositories/{repoId}/importRequests?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
             return json.importRequestId;
         }
         #endregion
@@ -716,6 +759,8 @@ namespace VstsApi.Net
         //    return json.id;
         //}
 
+        
+
         #endregion
 
         #region Endpoints
@@ -740,7 +785,7 @@ namespace VstsApi.Net
                 }
             };
 
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{CollectionUrl}/{projectId}/_apis/distributedtask/serviceendpoints?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{projectId}/_apis/distributedtask/serviceendpoints?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
             return json.id;
         }
         #endregion
