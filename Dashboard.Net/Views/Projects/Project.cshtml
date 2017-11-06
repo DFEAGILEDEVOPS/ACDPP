@@ -2,12 +2,13 @@
     ViewData["Title"] = (Model.Id == null ? "Create Project" : $"Edit Project: {Model.Name}") + " - The Platform Thing";
 }
 @model Dashboard.Net.Models.ProjectViewModel
+@using Dashboard.Net.Classes;
 <main id="content" role="main">
     <div class="grid-row">
         <div class="column-full">
             @using (Html.BeginForm((Model.Id == null ? "Create" : "Edit"), null, FormMethod.Post, new { autocomplete = "off" }))
             {
-                @Html.ValidationSummary()
+                @Html.CustomValidationSummary()
                 @Html.AntiForgeryToken()
                 @Html.HiddenFor(m=>Model.Id)
 

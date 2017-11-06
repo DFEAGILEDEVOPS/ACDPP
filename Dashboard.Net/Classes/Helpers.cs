@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Mvc.Html;
 
 namespace Dashboard.Net.Classes
 {
@@ -30,5 +31,13 @@ namespace Dashboard.Net.Classes
                 modelState.Remove(key);
             }
         }
+        public static MvcHtmlString CustomValidationSummary(this HtmlHelper helper, bool excludePropertyErrors = true, string validationSummaryMessage = "The following errors were detected", object htmlAttributes = null)
+        {
+            helper.ViewBag.ValidationSummaryMessage = validationSummaryMessage;
+            helper.ViewBag.ExcludePropertyErrors = excludePropertyErrors;
+
+            return helper.Partial("_ValidationSummary");
+        }
+
     }
 }

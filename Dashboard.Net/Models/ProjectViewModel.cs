@@ -19,6 +19,7 @@ namespace Dashboard.Net.Models
 
         public string Description { get; set; }
         public string Url { get; set; }
+        public string AppUrl { get; set; }
 
         [Required(AllowEmptyStrings = false)]
         public string CostCode { get; set; }

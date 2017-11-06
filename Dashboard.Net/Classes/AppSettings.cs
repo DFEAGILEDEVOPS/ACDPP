@@ -15,6 +15,7 @@ namespace Dashboard.Classes
         public static string SourceProjectName = ConfigurationManager.AppSettings["SourceProjectName"];
         public static string SourceRepoName = ConfigurationManager.AppSettings["SourceRepoName"];
         public static string SourceBuildName = ConfigurationManager.AppSettings["SourceBuildName"];
+        public static string ConfigBuildName = ConfigurationManager.AppSettings["ConfigBuildName"];
 
         public static string VSTSAccountEmail = ConfigurationManager.AppSettings["VSTSAccountEmail"];
         public static string VSTSPersonalAccessToken = ConfigurationManager.AppSettings["VSTSPersonalAccessToken"];

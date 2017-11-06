@@ -91,6 +91,54 @@ namespace VstsApi.Net
             public string RemoteUrl { get; set; }
             public Project Project { get; set; }
         }
+
+        public class Build
+        {
+            public string Id { get; set; }
+            public string Url { get; set; }
+            public Definition Definition { get; set; }
+            public string SourceBranch { get; set; }
+            public string Parameters { get; set; }
+            public string QueueTime { get; set; }
+            public string StartTime { get; set; }
+            public string FinishTime { get; set; }
+            public string Status { get; set; }
+            public string Result { get; set; }
+            public string Reason { get; set; }
+        }
+
+        public class Definition
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+            public string Description { get; set; }
+            public string Url { get; set; }
+            public string State { get; set; }
+            public string Revision { get; set; }
+        }
+
+        public class Queue
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+            public QueuePool Pool { get; set; }
+            public string GroupScopeId { get; set; }
+        }
+        public class QueuePool
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+            public string Scope { get; set; }
+        }
+
+        public class Process
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+            public string Description { get; set; }
+            public string Url { get; set; }
+            public string IsDefault { get; set; }
+        }
         #endregion
 
         #region Accounts
@@ -180,35 +228,291 @@ namespace VstsApi.Net
             }
         }
 
-        public static int CloneBuild(string sourceProjectName, string sourceBuildName, string targetProjectName, Repo repo)
+        public static List<Microsoft.TeamFoundation.Build.WebApi.Build> GetBuilds(string projectName, string buildName, params string[] parameters)
+        {
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
+            {
+
+                var projectClient = connection.GetClientAsync<ProjectHttpClient>().Result;
+                var projects = projectClient.GetProjects(ProjectState.WellFormed).Result;
+                var project = projects?.FirstOrDefault(p => p.Name.EqualsI(projectName));
+                if (project == null) throw new ArgumentException($"Project '{projectName}' does not exist");
+
+                var buildClient = connection.GetClientAsync<BuildHttpClient>().Result;
+                var sourceBuildRefs = buildClient.GetDefinitionsAsync(project.Id).Result;
+
+                var buildRef = sourceBuildRefs?.FirstOrDefault(b => b.Name.EqualsI(buildName));
+                if (buildRef == null) throw new ArgumentException($"Build '{buildName}' does not exist");
+
+                var builds = buildClient.GetBuildsAsync(project.Id,new[] { buildRef.Id }).Result;
+                return builds;
+            }
+        }
+
+        public static int CloneDefinition(string sourceProjectName, string sourceBuildName, string targetProjectName, Repo repo, Dictionary<string,string> variables=null, bool overwrite=false)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var projectClient = connection.GetClientAsync<ProjectHttpClient>().Result;
                 var projects=projectClient.GetProjects(ProjectState.WellFormed).Result;
-                var sourceProject = projects.FirstOrDefault(p => p.Name.EqualsI(sourceProjectName));
+                var sourceProject = projects?.FirstOrDefault(p => p.Name.EqualsI(sourceProjectName));
+                if (sourceProject == null) throw new ArgumentException($"Source Project '{sourceProjectName}' does not exist");
 
                 var buildClient = connection.GetClientAsync<BuildHttpClient>().Result;
-                var sourceBuildRefs = buildClient.GetDefinitionsAsync(sourceProject.Id).Result;
-                var sourceBuildRef = sourceBuildRefs.FirstOrDefault(b=>b.Name.EqualsI(SourceBuildName));
+                var sourceDefinitions = buildClient.GetDefinitionsAsync(sourceProject.Id).Result;
+                var sourceBuildRef = sourceDefinitions?.FirstOrDefault(b=>b.Name.EqualsI(SourceBuildName));
+                if (sourceBuildRef == null) throw new ArgumentException($"Source Build '{sourceBuildName}' does not exist");
+
                 var sourceBuild = buildClient.GetDefinitionAsync(sourceProject.Id,sourceBuildRef.Id).Result;
 
-                var targetProject = projects.FirstOrDefault(p => p.Name.EqualsI(targetProjectName));
+                var targetProject = projects?.FirstOrDefault(p => p.Name.EqualsI(targetProjectName));
+                if (sourceProject == null) throw new ArgumentException($"Target Project '{sourceProjectName}' does not exist");
+
                 var targetBuildRef = buildClient.GetDefinitionsAsync(targetProject.Id, sourceBuildName).Result.FirstOrDefault();
-                if (targetBuildRef != null) buildClient.DeleteDefinitionAsync(targetProject.Id, targetBuildRef.Id);
+
+                if (targetBuildRef != null)
+                {
+                    if (overwrite)
+                        buildClient.DeleteDefinitionAsync(targetProject.Id, targetBuildRef.Id);
+                    else
+                        throw new ArgumentException($"Target Build '{sourceBuildName}' already exists");
+                }
 
                 sourceBuild.Project = null;
-                sourceBuild.Queue=null;//TODO
                 sourceBuild.Repository.Id = repo.Id;
                 sourceBuild.Repository.Name = repo.Name;
                 sourceBuild.Repository.DefaultBranch = repo.DefaultBranch;
                 sourceBuild.Repository.Url = new Uri(repo.RemoteUrl);
-                var process=(DesignerProcess)sourceBuild.Process;
-                process.Phases[0].Steps.RemoveAt(5);
 
+                var queue = GetQueues(targetProject.Id.ToString(),sourceBuild.Queue.Name).FirstOrDefault();
+                if (queue == null)
+                    sourceBuild.Queue = null;
+                else if (sourceBuild.Queue.Id != queue.Id.ToInt32())
+                    sourceBuild.Queue.Id = queue.Id.ToInt32();//TODO - keeps throwing "No agent queue found with identifier 302".
+
+                //sourceBuild.Queue = null;//TODO - keeps throwing "No agent queue found with identifier 302".
+
+                if (variables != null)
+                    foreach (var key in variables.Keys)
+                        sourceBuild.Variables[key].Value = variables[key];
+                sourceBuild.VariableGroups.Clear();
                 var targetBuild =buildClient.CreateDefinitionAsync(sourceBuild, targetProject.Id);
                 targetBuild.Wait();
                 return targetBuild.Id;
+            }
+        }
+
+        public static List<Definition> GetDefinitions(string project, string name=null)
+        {
+            var apiVersion = "2.0";
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{project}/_apis/build/definitions?api-version={apiVersion}{(string.IsNullOrWhiteSpace(name) ? "" : "&name="+name)}", password: VSTSPersonalAccessToken)).Result;
+            var results = new List<Definition>();
+            foreach (var item in json.value)
+            {
+                results.Add(new Definition()
+                {
+                    Id = (string)item.id,
+                    Name = (string)item.name,
+                    Url = (string)item.url,
+                    Revision = (string)item.revision
+                });
+            }
+            return results;
+        }
+
+        public static List<Queue> GetQueues(string project, string queueName=null)
+        {
+            var apiVersion = "3.0-preview.1";
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{project}/_apis/distributedtask/queues?api-version={apiVersion}{(string.IsNullOrWhiteSpace(queueName)?"":$"&queueName={queueName}")}", password: VSTSPersonalAccessToken)).Result;
+            var results = new List<Queue>();
+            foreach (var item in json.value)
+            {
+                results.Add(new Queue()
+                {
+                    Id = (string)item.id,
+                    Name = (string)item.name,
+                    GroupScopeId = (string)item.groupScopeId,
+                    Pool=new QueuePool()
+                    {
+                        Id = (string)item.pool.id,
+                        Name = (string)item.pool.name,
+                        Scope = (string)item.pool.scope,
+                    }
+                });
+            }
+            return results;
+        }
+
+        public static List<Process> GetProcesses()
+        {
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/_apis/process/processes?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var results = new List<Process>();
+            foreach (var item in json.value)
+            {
+                results.Add(new Process()
+                {
+                    Id = (string)item.id,
+                    Url = (string)item.url,
+                    Name = (string)item.name,
+                    Description = (string)item.description,
+                    IsDefault = (string)item.isDefault
+                });
+            }
+            return results;
+        }
+
+        public static List<Build> GetBuilds(string project, string build)
+        {
+            var definitionId=build.IsInteger() ? build : GetDefinitions(project,build).FirstOrDefault()?.Id;
+            var apiVersion = "2.0";
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{project}/_apis/build/builds?api-version={apiVersion}&definitions={definitionId}&statusFilter=all", password: VSTSPersonalAccessToken)).Result;
+            var results = new List<Build>();
+            foreach (var item in json.value)
+            {
+                results.Add(new Build()
+                {
+                    Id = (string)item.id,
+                    Url = (string)item.url,
+                    Definition = new Definition()
+                    {
+                        Id= (string)item.definition.id,
+                        Name= (string)item.definition.name,
+                        Url = (string)item.definition.url,
+                        Revision= (string)item.definition.revision,
+                    },
+                    SourceBranch = (string)item.sourceBranch,
+                    Status= (string)item.status,
+                    QueueTime= (string)item.queueTime,
+                    StartTime = (string)item.startTime,
+                    FinishTime= (string)item.finishTime,
+                    Parameters = (string)item.parameters,
+                    Result = (string)item.result,
+                    Reason = (string)item.reason,
+                });
+            }
+            return results;
+        }
+
+        public static Build GetBuild(string project, int buildId)
+        {
+            var apiVersion = "2.0";
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{project}/_apis/build/builds/{buildId}?api-version={apiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var result = new Build()
+            {
+                Id = (string)json.id,
+                Url = (string)json.url,
+                Definition = new Definition()
+                {
+                    Id = (string)json.definition.id,
+                    Name = (string)json.definition.name,
+                    Url = (string)json.definition.url,
+                    Revision = (string)json.definition.revision,
+                },
+                SourceBranch = (string)json.sourceBranch,
+                Status = (string)json.status,
+                QueueTime = (string)json.queueTime,
+                StartTime = (string)json.startTime,
+                Parameters = (string)json.parameters,
+                Result = (string)json.result,
+                Reason = (string)json.reason,
+            };
+            
+            return result;
+        }
+
+        public static Build QueueBuild(Guid projectId, int definitionId, string parameters = null, string branch = null)
+        {
+            var apiVersion = "2.0";
+
+            if (string.IsNullOrWhiteSpace(branch))
+                branch = "refs/heads/master";
+            else if (!branch.ContainsI("/"))
+                branch = $"refs/heads/{branch}";
+
+             var body = new
+            {
+                definition = new { id = definitionId },
+                sourceBranch = branch,
+                parameters = parameters
+            };
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{projectId}/_apis/build/builds?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+
+            var result = new Build()
+            {
+                Id = (string)json.id,
+                Url = (string)json.url,
+                Definition = new Definition()
+                {
+                    Id = (string)json.definition.id,
+                    Name = (string)json.definition.name,
+                    Url = (string)json.definition.url,
+                    Revision = (string)json.definition.revision,
+                },
+                SourceBranch = (string)json.sourceBranch,
+                Status = (string)json.status,
+                Result = (string)json.result,
+                QueueTime = (string)json.queueTime,
+                StartTime = (string)json.startTime,
+                FinishTime = (string)json.finishTime,
+                Parameters = (string)json.parameters,
+                Reason = (string)json.reason,
+            };
+
+            return result;
+        }
+
+        public static Build WaitForBuild(string projectId,Build build, int timeoutSeconds=120)
+        {
+            DateTime expiration = DateTime.Now.AddSeconds(timeoutSeconds);
+            while (!build.Status.EqualsI("Completed"))
+            {
+                if (DateTime.Now > expiration) throw new Exception($"Build '{build.Definition.Name}:{build.Id}' did not complete in {timeoutSeconds} seconds. Please try again.");
+                Thread.Sleep(intervalInSec * 1000);
+                build = GetBuild(projectId,build.Id.ToInt32());
+            }
+            return build;
+        }
+
+        public static int QueueBuild(string projectName, string buildName, string parameters=null)
+        {
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
+            {
+
+                var projectClient = connection.GetClientAsync<ProjectHttpClient>().Result;
+                var projects = projectClient.GetProjects(ProjectState.WellFormed).Result;
+                var project = projects?.FirstOrDefault(p => p.Name.EqualsI(projectName));
+                if (project==null)throw new ArgumentException($"Project '{projectName}' does not exist");
+
+                var buildClient = connection.GetClientAsync<BuildHttpClient>().Result;
+                var sourceBuildRefs = buildClient.GetDefinitionsAsync(project.Id).Result;
+                var sourceBuildRef = sourceBuildRefs?.FirstOrDefault(b => b.Name.EqualsI(SourceBuildName));
+                if (sourceBuildRef == null) throw new ArgumentException($"Build '{buildName}' does not exist");
+
+                var newBuild = new Microsoft.TeamFoundation.Build.WebApi.Build
+                {
+                    Definition = new DefinitionReference
+                    {
+                        Id = sourceBuildRef.Id
+                    },
+                    Project = sourceBuildRef.Project
+                };
+
+                //Set the parameters
+                if (!string.IsNullOrWhiteSpace(parameters)) newBuild.Parameters = parameters;
+
+                // Build class has many properties, hoqever we can set only these properties.
+                //ref: https://www.visualstudio.com/integrate/api/build/builds#queueabuild
+                //In this nuget librari, we should set Project property.
+                //It requires project's GUID, so we're compelled to get GUID by API.
+                var res = buildClient.QueueBuildAsync(newBuild).Result;
+
+                return res.Id;
             }
         }
 
@@ -394,9 +698,16 @@ namespace VstsApi.Net
             return result;
         }
 
-        public static Project CreateProject(string name, string description = null)
+        public static Project CreateProject(string name, string description = null, string targetProcessTemplate=null)
         {
-            var body = new
+            if (string.IsNullOrWhiteSpace(targetProcessTemplate))
+            {
+                var processes = GetProcesses();
+                targetProcessTemplate = processes.FirstOrDefault(p => p.IsDefault.ToBoolean())?.Id;
+                if (string.IsNullOrWhiteSpace(targetProcessTemplate)) targetProcessTemplate = processes.FirstOrDefault()?.Id;
+            }
+
+             var body = new
             {
                 name,
                 description,
@@ -408,7 +719,7 @@ namespace VstsApi.Net
                     },
                     processTemplate = new
                     {
-                        templateTypeId = TargetProjectTemplateId
+                        templateTypeId = targetProcessTemplate
                     }
                 }
             };
@@ -788,6 +1099,7 @@ namespace VstsApi.Net
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{projectId}/_apis/distributedtask/serviceendpoints?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
             return json.id;
         }
+
         #endregion
 
 

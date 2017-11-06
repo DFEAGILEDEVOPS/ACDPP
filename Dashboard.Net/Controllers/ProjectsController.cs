@@ -12,6 +12,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using Extensions.Net.Classes;
 using Dashboard.Net.Classes;
+using Newtonsoft.Json;
 
 namespace Dashboard.Controllers
 {
@@ -41,6 +42,7 @@ namespace Dashboard.Controllers
                 {
                     var p = VstsManager.GetProject(newProject.Id);
                     newProject.Url = p.Links["web"];
+                    newProject.AppUrl = newProject.Properties[ProjectProperties.AppUrl];
                 }
 
                 model.Add(newProject);
@@ -110,6 +112,14 @@ namespace Dashboard.Controllers
                         return View("Project",model);
                     }
 
+                    //Create the build parameters
+                    var parameters = new Dictionary<string, string>();
+                    parameters["oc_project_name"] = model.Name.ToLower().ReplaceI("_", "-").ReplaceI(" ");
+                    parameters["oc_build_config_name"] = $"webbapp";
+                    var jsonParameters = JsonConvert.SerializeObject(parameters);
+                    var appUrl = $"https://{parameters["oc_build_config_name"]}-{parameters["oc_project_name"]}.demo.dfe.secnix.co.uk/";
+
+
                     //Create Project (if it doesnt already exist)
 
                     string newProjectId = null;
@@ -133,6 +143,7 @@ namespace Dashboard.Controllers
                         if (!oldProperties.ContainsKey(ProjectProperties.CreatedBy)) newProperties[ProjectProperties.CreatedBy] = AppSettings.ProjectCreatedBy;
                         if (!oldProperties.ContainsKey(ProjectProperties.CreatedDate)) newProperties[ProjectProperties.CreatedDate] = DateTime.Now.ToString();
                         if (!oldProperties.ContainsKey(ProjectProperties.CostCode)) newProperties[ProjectProperties.CostCode] = model.CostCode;
+                        if (!oldProperties.ContainsKey(ProjectProperties.AppUrl)) newProperties[ProjectProperties.AppUrl] = appUrl;
                         if (newProperties.Count > 0) VstsManager.SetProjectProperties(model.Id, newProperties);
                         //Marke the project as created properly
                         newProjectId = null;
@@ -163,10 +174,61 @@ namespace Dashboard.Controllers
                         VstsManager.ImportRepo(model.Id, repo.Id, AppSettings.SourceRepoUrl, serviceEndpointId);
                     }
 
-                    //Call the God project to create the build
+                    //Get the config builds
+                    var sourceProject = projects.FirstOrDefault(p=>p.Name.EqualsI(AppSettings.SourceProjectName));
+                    
+                    //Get the build definition
+                    var definitions = VstsManager.GetDefinitions(sourceProject.Id, AppSettings.ConfigBuildName);
+                    var sourceDefinition = definitions.FirstOrDefault(d => d.Name.EqualsI(AppSettings.ConfigBuildName));
 
-                    //Create the sample build definition passing in project arguments
-                    VstsManager.CloneBuild(AppSettings.SourceProjectName, AppSettings.SourceBuildName,project.Name,repo);
+                    //Get the latest build 
+                    var builds = VstsManager.GetBuilds(sourceProject.Id, sourceDefinition.Id).Where(b=>b.Parameters.EqualsI(jsonParameters));
+                    var build = builds.OrderByDescending(b => b.QueueTime).FirstOrDefault();
+
+                    //Create a new build if the last failed
+                    if (build == null || (build.Status.EqualsI("Completed") && build.Result.EqualsI("failed")))build = VstsManager.QueueBuild(sourceProject.Id.ToGuid(), sourceDefinition.Id.ToInt32(), jsonParameters);
+
+                    //Wait for the build to finish
+                    if (!build.Status.EqualsI("Completed")) build = VstsManager.WaitForBuild(sourceProject.Id, build);
+
+                    //Ensure the build succeeded
+                    if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build {build.Result}: '{build.Definition.Name}:{build.Id}' ");
+
+                    //Clone the sample build definition from the source to target project
+                    var buildId=VstsManager.CloneDefinition(AppSettings.SourceProjectName, AppSettings.SourceBuildName,project.Name,repo, parameters,true);
+
+                    //Get the target builds
+
+                    //Queue the sample build
+
+                    ////Build if not already done or pending
+                    //builds = VstsManager.GetBuilds(project.Id, buildId.ToString());
+
+                    ////Create a new build if the last failed
+                    //if (build == null || (build.Status.EqualsI("Completed") && build.Result.EqualsI("failed"))) build = VstsManager.QueueBuild(project.Id.ToGuid(), buildId, jsonParameters);
+
+                    ////Wait for the build to finish
+                    //if (!build.Status.EqualsI("Completed")) build = VstsManager.WaitForBuild(sourceProject.Id, build);
+
+                    /*********** Temp Cheat ******/
+                    //Build if not already done or pending
+                    definitions = VstsManager.GetDefinitions(sourceProject.Id, AppSettings.SourceBuildName);
+
+                    sourceDefinition = definitions.FirstOrDefault(d => d.Name.EqualsI(AppSettings.SourceBuildName));
+
+                    //Get the latest build 
+                    builds = VstsManager.GetBuilds(sourceProject.Id, sourceDefinition.Id).Where(b => b.Parameters.EqualsI(jsonParameters));
+                    build = builds.OrderByDescending(b => b.QueueTime).FirstOrDefault();
+
+                    //Create a new build if the last failed
+                    if (build == null || (build.Status.EqualsI("Completed") && build.Result.EqualsI("failed"))) build = VstsManager.QueueBuild(sourceProject.Id.ToGuid(), sourceDefinition.Id.ToInt32(), jsonParameters);
+
+                    //Wait for the build to finish
+                    if (!build.Status.EqualsI("Completed")) build = VstsManager.WaitForBuild(sourceProject.Id, build);
+
+                    /***********/
+                    //Ensure the build succeeded
+                    if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build {build.Result}: '{build.Definition.Name}:{buildId}' ");
 
                     //Get the team & members
                     var teams = VstsManager.GetTeams(model.Id);
@@ -193,7 +255,7 @@ namespace Dashboard.Controllers
                     }
 
                     //Get the new team members
-                    var newMembers = model.TeamMembers.Where(m=> !members.Any(m1=>m1.UniqueName.EqualsI(m.Email))).ToList();
+                    var newMembers = model.TeamMembers.Where(m=> true || !members.Any(m1=>m1.UniqueName.EqualsI(m.Email))).ToList();
 
                     members = VstsManager.GetMembers(model.Id, team.Id);
 
@@ -216,7 +278,6 @@ namespace Dashboard.Controllers
                     if (newMembers.Count>0)
                     {
                         var projectUrl = project.Links["web"];
-                        var appUrl = "https://HelloWorld.com";
                         var gitUrl = repo.RemoteUrl;
 
                         var notify = new GovNotifyAPI();
