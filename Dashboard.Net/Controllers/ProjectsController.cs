@@ -11,6 +11,7 @@ using VstsApi.Net;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using Extensions.Net.Classes;
+using Dashboard.Net.Classes;
 
 namespace Dashboard.Controllers
 {
@@ -162,6 +163,8 @@ namespace Dashboard.Controllers
                         VstsManager.ImportRepo(model.Id, repo.Id, AppSettings.SourceRepoUrl, serviceEndpointId);
                     }
 
+                    //Call the God project to create the build
+
                     //Create the sample build definition passing in project arguments
                     VstsManager.CloneBuild(AppSettings.SourceProjectName, AppSettings.SourceBuildName,project.Name,repo);
 
@@ -258,18 +261,51 @@ namespace Dashboard.Controllers
         [HttpPost]
         public ActionResult Edit(ProjectViewModel model, string command)
         {
-            if (command=="Delete Project")
-            {
-                var project = VstsManager.GetProjects().FirstOrDefault(p => p.Id == model.Id);
-                if (project == null) return View("CustomError", new CustomErrorViewModel { Title = "Not Found", Subtitle = "Cannot find the specified project", Description = "Your project was not found.", CallToAction = "Return to editing this project", ActionText = "Continue", ActionUrl = Url.Action("Edit", new { model.Id }) });
-                model.Properties = VstsManager.GetProjectProperties(model.Id, ProjectProperties.CreatedBy);
-                if (model.Properties[ProjectProperties.CreatedBy]!=AppSettings.ProjectCreatedBy) return View("CustomError", new CustomErrorViewModel { Title = "Unauthorised", Subtitle = "You dont have permission to delete this project", Description = "This project was not created here and cannot be deleted.", CallToAction = "Return to editing this project", ActionText = "Continue", ActionUrl = Url.Action("Edit", new { model.Id }) });
-
-                //TODO Delete the project
-                VstsManager.DeleteProject(model.Id);
-                return View("CustomError", new CustomErrorViewModel { Title = "Complete", Subtitle = "Project successfully deleted", Description = $"Your project was successfully deleted.", CallToAction = "View projects...", ActionText = "Continue", ActionUrl = Url.Action("Index") });
-            }
             return Create(model, command);
+        }
+
+
+        [HttpGet]
+        public ActionResult Delete(string Id)
+        {
+            //Check the project exists
+            var project = VstsManager.GetProjects().FirstOrDefault(p => p.Id == Id);
+            if (project == null) return View("CustomError", new CustomErrorViewModel { Title = "Not Found", Subtitle = "Cannot find the specified project", Description = "Your project was not found.", CallToAction = "Return to projects list...", ActionText = "Continue", ActionUrl = Url.Action("Edit",new {Id}) });
+
+            //Load the project 
+            var model = new ProjectViewModel();
+            model.Id = project.Id;
+            model.Name = project.Name;
+            model.Description = project.Description;
+            var properties = VstsManager.GetProjectProperties(project.Id, ProjectProperties.CreatedBy, ProjectProperties.CreatedDate, ProjectProperties.CostCode);
+            model.CostCode = properties[ProjectProperties.CostCode];
+
+            var teams = VstsManager.GetTeams(project.Id);
+            if (teams.Count > 0) model.TeamMembers = VstsManager.GetMembers(project.Id, teams[0].Id).Select(m => new TeamMemberViewModel() { TeamMemberId = m.Id, FirstName = m.DisplayName.BeforeFirst(" ").BeforeFirst("."), LastName = m.DisplayName.AfterFirst(" ").AfterFirst("."), Email = m.UniqueName }).ToList();
+            if (model.TeamMembers.Count < 1) model.TeamMembers = new List<TeamMemberViewModel>() { new TeamMemberViewModel() };
+
+            return View("Delete", model);
+        }
+
+        [HttpPost]
+        public ActionResult Delete(ProjectViewModel model, string projectName)
+        {
+            ModelState.Exclude(nameof(model.Name),nameof(model.CostCode));
+
+            var project = VstsManager.GetProjects().FirstOrDefault(p => p.Id == model.Id);
+            if (string.IsNullOrWhiteSpace(projectName) || !model.Name.EqualsI(projectName))
+            {
+                ModelState.AddModelError(nameof(model.Name), "You must enter the exact project name");
+                return View(model);
+            }
+
+            if (project == null) return View("CustomError", new CustomErrorViewModel { Title = "Not Found", Subtitle = "Cannot find the specified project", Description = "Your project was not found.", CallToAction = "Return to editing this project", ActionText = "Continue", ActionUrl = Url.Action("Edit", new { model.Id }) });
+            model.Properties = VstsManager.GetProjectProperties(model.Id, ProjectProperties.CreatedBy);
+            if (model.Properties[ProjectProperties.CreatedBy] != AppSettings.ProjectCreatedBy) return View("CustomError", new CustomErrorViewModel { Title = "Unauthorised", Subtitle = "You dont have permission to delete this project", Description = "This project was not created here and cannot be deleted.", CallToAction = "Return to editing this project", ActionText = "Continue", ActionUrl = Url.Action("Edit", new { model.Id }) });
+
+            //TODO Delete the project
+            VstsManager.DeleteProject(model.Id);
+            return View("CustomError", new CustomErrorViewModel { Title = "Complete", Subtitle = "Project successfully deleted", Description = $"Your project was successfully deleted.", CallToAction = "View projects...", ActionText = "Continue", ActionUrl = Url.Action("Index") });
         }
     }
 }

@@ -15,9 +15,9 @@
                     @(Model.Id == null ? "New Project" : $"Edit Project: {Model.Name}")
                     @if (Model.Id != null)
                     {
-                        <button type="submit" class="link-button" name="command" value="Delete Project" title="Delete this project" style="float:right" onclick="if (!confirm('Are you sure you want to delete this project?')) return false;">
+                        <a class="link-button" title="Delete this project" style="float:right" href="@Url.Action("Delete",new {Model.Id})">
                             <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                        </button>
+                        </a>
                     }
                 </h1>
                 <h2 class="heading-medium">Project Details</h2>

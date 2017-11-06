@@ -153,6 +153,7 @@
     <Compile Include="Classes\BasicAuthenticationAttribute.cs" />
     <Compile Include="Classes\Enums.cs" />
     <Compile Include="Classes\GovNotifyAPI.cs" />
+    <Compile Include="Classes\Helpers.cs" />
     <Compile Include="Classes\IGovNotifyAPI.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
@@ -271,6 +272,7 @@
     <Content Include="Views\Home\ContactUs.cshtml" />
     <Content Include="Views\Home\FeedbackSent.cshtml" />
     <Content Include="Views\Home\Feedback.cshtml" />
+    <Content Include="Views\Projects\Delete.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
