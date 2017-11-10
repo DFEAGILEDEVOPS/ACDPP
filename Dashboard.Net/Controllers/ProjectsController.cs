@@ -87,6 +87,7 @@ namespace Dashboard.Controllers
                 }
                 else if (command.EqualsI("Create Project","Save Changes"))
                 {
+                    #region Step 1: Validation
                     int c = 0;
                     foreach (var member in model.TeamMembers)
                     {
@@ -97,21 +98,28 @@ namespace Dashboard.Controllers
                     if (!ModelState.IsValid)return View("Project",model);
 
                     //Check project name doesnt already exist
-                    var projects = VstsManager.GetProjects();
+                    var allProjects = VstsManager.GetProjects();
 
-                    var project= !string.IsNullOrWhiteSpace(model.Id) ? projects.FirstOrDefault(p => p.Id == model.Id) : projects.FirstOrDefault(p => p.Name.EqualsI(model.Name));
-                    if (project != null)
+                    //Get the target project
+                    var targetProject= !string.IsNullOrWhiteSpace(model.Id) ? allProjects.FirstOrDefault(p => p.Id == model.Id) : allProjects.FirstOrDefault(p => p.Name.EqualsI(model.Name));
+                    if (targetProject != null)
                     {
-                        project = VstsManager.GetProject(project.Id); //Get the links etc
-                        if (string.IsNullOrWhiteSpace(model.Id))model.Id = project.Id;
+                        targetProject = VstsManager.GetProject(targetProject.Id); //Get the links etc
+                        if (string.IsNullOrWhiteSpace(model.Id))model.Id = targetProject.Id;
                     }
 
-                    if (projects.Any(p => p.Name.ToLower() == model.Name.ToLower() && (project==null || p.Id!=project.Id)))
+                    //Check the target doesnt already exist
+                    if (allProjects.Any(p => p.Name.ToLower() == model.Name.ToLower() && (targetProject==null || p.Id!=targetProject.Id)))
                     {
                         ModelState.AddModelError(nameof(model.Name), "A project with this name already exists");
                         return View("Project",model);
                     }
 
+                    //Get the source project
+                    var sourceProject = allProjects.FirstOrDefault(p => p.Name.EqualsI(AppSettings.SourceProjectName));
+                    #endregion
+
+                    #region Step 2: Create the project
                     //Create the build parameters
                     var parameters = new Dictionary<string, string>();
                     parameters["oc_project_name"] = model.Name.ToLower().ReplaceI("_", "-").ReplaceI(" ");
@@ -119,23 +127,20 @@ namespace Dashboard.Controllers
                     var jsonParameters = JsonConvert.SerializeObject(parameters);
                     var appUrl = $"https://{parameters["oc_build_config_name"]}-{parameters["oc_project_name"]}.demo.dfe.secnix.co.uk/";
 
-
-                    //Create Project (if it doesnt already exist)
-
                     string newProjectId = null;
                     try
                     {
                         if (string.IsNullOrWhiteSpace(model.Id))
                         {
-                            project = VstsManager.CreateProject(model.Name, model.Description);
-                            model.Id = project.Id;
-                            newProjectId = project.Id;
+                            targetProject = VstsManager.CreateProject(model.Name, model.Description);
+                            model.Id = targetProject.Id;
+                            newProjectId = targetProject.Id;
                         }
-                        else if (!model.Name.Equals(project.Name) || model.Description!=project.Description)
+                        else if (!model.Name.Equals(targetProject.Name) || model.Description!=targetProject.Description)
                         {
-                            if (!VstsManager.EditProject(project, model.Name, model.Description)) throw new Exception("Could not update project name or description");
+                            if (!VstsManager.EditProject(targetProject, model.Name, model.Description)) throw new Exception("Could not update project name or description");
                         }
-                        if (!project.State.EqualsI("WellFormed")) throw new Exception("Project has not yet completed creation. Please try again");
+                        if (!targetProject.State.EqualsI("WellFormed")) throw new Exception("Project has not yet completed creation. Please try again");
 
                         //Add the special properties
                         var oldProperties = VstsManager.GetProjectProperties(model.Id, ProjectProperties.All);
@@ -153,7 +158,9 @@ namespace Dashboard.Controllers
                         //Delete the project if we couldnt create properly
                         if (!string.IsNullOrWhiteSpace(newProjectId)) VstsManager.DeleteProject(newProjectId);
                     }
+                    #endregion
 
+                    #region Step 3: Clone the source repo
                     //Get the Repo
                     var repos = VstsManager.GetRepos(model.Id);
                     var repo = repos.Count==0 ? null : repos[0];
@@ -161,22 +168,25 @@ namespace Dashboard.Controllers
                     //Create a new repo
                     if (repo == null)
                     {
-                        var repoId = VstsManager.CreateRepo(model.Id, project.Name);
-                        if (string.IsNullOrWhiteSpace(repoId)) throw new Exception($"Could not create repo '{project.Name}'");
+                        var repoId = VstsManager.CreateRepo(model.Id, targetProject.Name);
+                        if (string.IsNullOrWhiteSpace(repoId)) throw new Exception($"Could not create repo '{targetProject.Name}'");
                         repo = repos.Count == 0 ? null : repos[0];
                     }
                     if (repo == null) throw new Exception("Could not create repo '{project.Name}'");
 
                     //copy the sample repo if it doesnt already exist
+                    var authParameters = new Dictionary<string, string>();
                     if (string.IsNullOrWhiteSpace(repo.DefaultBranch))
                     {
-                        var serviceEndpointId = VstsManager.CreateEndpoint(model.Id, AppSettings.SourceRepoUrl, "", AppSettings.VSTSPersonalAccessToken);
-                        VstsManager.ImportRepo(model.Id, repo.Id, AppSettings.SourceRepoUrl, serviceEndpointId);
+                        authParameters["username"] = "";
+                        authParameters["password"] = AppSettings.VSTSPersonalAccessToken;
+                        var serviceEndpoint = VstsManager.CreateEndpoint(targetProject.Id, $"Temp-Import-{Guid.NewGuid()}", "Git", AppSettings.SourceRepoUrl, "PersonalAccessToken", authParameters);
+                        VstsManager.ImportRepo(model.Id, repo.Id, AppSettings.SourceRepoUrl, serviceEndpoint.ToString());
                     }
+                    #endregion
 
-                    //Get the config builds
-                    var sourceProject = projects.FirstOrDefault(p=>p.Name.EqualsI(AppSettings.SourceProjectName));
-                    
+                    #region Step 4: Build and deploy the OpenShift environment
+
                     //Get the build definition
                     var definitions = VstsManager.GetDefinitions(sourceProject.Id, AppSettings.ConfigBuildName);
                     var sourceDefinition = definitions.FirstOrDefault(d => d.Name.EqualsI(AppSettings.ConfigBuildName));
@@ -193,49 +203,34 @@ namespace Dashboard.Controllers
 
                     //Ensure the build succeeded
                     if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build {build.Result}: '{build.Definition.Name}:{build.Id}' ");
+                    #endregion
 
+                    #region Step 5: Copy the source build
                     //Clone the sample build definition from the source to target project
-                    var buildId=VstsManager.CloneDefinition(AppSettings.SourceProjectName, AppSettings.SourceBuildName,project.Name,repo, parameters,true);
-
-                    //Get the target builds
-
-                    //Queue the sample build
-
-                    ////Build if not already done or pending
-                    //builds = VstsManager.GetBuilds(project.Id, buildId.ToString());
-
-                    ////Create a new build if the last failed
-                    //if (build == null || (build.Status.EqualsI("Completed") && build.Result.EqualsI("failed"))) build = VstsManager.QueueBuild(project.Id.ToGuid(), buildId, jsonParameters);
-
-                    ////Wait for the build to finish
-                    //if (!build.Status.EqualsI("Completed")) build = VstsManager.WaitForBuild(sourceProject.Id, build);
-
-                    /*********** Temp Cheat ******/
-                    //Build if not already done or pending
-                    definitions = VstsManager.GetDefinitions(sourceProject.Id, AppSettings.SourceBuildName);
-
-                    sourceDefinition = definitions.FirstOrDefault(d => d.Name.EqualsI(AppSettings.SourceBuildName));
+                    sourceDefinition = VstsManager.GetDefinitions(targetProject.Id, AppSettings.SourceBuildName).FirstOrDefault();
+                    if (sourceDefinition==null) sourceDefinition = VstsManager.CloneDefinition(AppSettings.SourceProjectName, AppSettings.SourceBuildName,targetProject.Name,repo, parameters,true);
 
                     //Get the latest build 
-                    builds = VstsManager.GetBuilds(sourceProject.Id, sourceDefinition.Id).Where(b => b.Parameters.EqualsI(jsonParameters));
+                    builds = VstsManager.GetBuilds(targetProject.Id, sourceDefinition.Id).Where(b => b.Parameters.EqualsI(jsonParameters));
                     build = builds.OrderByDescending(b => b.QueueTime).FirstOrDefault();
+                    #endregion
 
+                    #region Step 6: Build and deploy the sample application
                     //Create a new build if the last failed
-                    if (build == null || (build.Status.EqualsI("Completed") && build.Result.EqualsI("failed"))) build = VstsManager.QueueBuild(sourceProject.Id.ToGuid(), sourceDefinition.Id.ToInt32(), jsonParameters);
+                    if (build == null || (build.Status.EqualsI("Completed") && build.Result.EqualsI("failed"))) build = VstsManager.QueueBuild(targetProject.Id.ToGuid(), sourceDefinition.Id.ToInt32(), jsonParameters);
 
                     //Wait for the build to finish
                     if (!build.Status.EqualsI("Completed")) build = VstsManager.WaitForBuild(sourceProject.Id, build);
-
-                    /***********/
+                    
                     //Ensure the build succeeded
-                    if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build {build.Result}: '{build.Definition.Name}:{buildId}' ");
+                    if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build {build.Result}: '{build.Definition.Name}:{build.Id}' ");
+                    #endregion
 
-                    //Get the team & members
+                    #region Step 7: Update the team members
                     var teams = VstsManager.GetTeams(model.Id);
                     var team = teams[0];
                     var members=VstsManager.GetMembers(model.Id, team.Id);
 
-                    //Create the new users and add to team 
                     foreach (var member in model.TeamMembers)
                     {
                         //Ensure the user account exists
@@ -249,15 +244,10 @@ namespace Dashboard.Controllers
 
                         //Ensure the user is a member of the team
                         if (!members.Any(m => m.UniqueName.EqualsI(member.Email, AppSettings.VSTSAccountEmail)))
-                        {
                             VstsManager.AddUserToTeam(member.Email, team.Id);
-                        }
                     }
-
                     //Get the new team members
-                    var newMembers = model.TeamMembers.Where(m=> true || !members.Any(m1=>m1.UniqueName.EqualsI(m.Email))).ToList();
-
-                    members = VstsManager.GetMembers(model.Id, team.Id);
+                    var newMembers = model.TeamMembers.Where(m => !members.Any(m1 => m1.UniqueName.EqualsI(m.Email))).ToList();
 
                     //Remove old users
                     foreach (var member in members)
@@ -265,19 +255,14 @@ namespace Dashboard.Controllers
                         if (member.UniqueName.EqualsI(AppSettings.VSTSAccountEmail))continue;
 
                         if (!model.TeamMembers.Any(m => m.Email.EqualsI(member.UniqueName)))
-                        {
                             VstsManager.RemoveUserFromTeam(model.Id, team.Id, member.UniqueName);
-                            members = VstsManager.GetMembers(model.Id, team.Id);
-                        };
                     }
+                    #endregion
 
-                    //TODO Create the service endpoints into azure if they dont already exist
-
-
-                    //Send the Email
+                    #region Step 8: Welcome the team members
                     if (newMembers.Count>0)
                     {
-                        var projectUrl = project.Links["web"];
+                        var projectUrl = targetProject.Links["web"];
                         var gitUrl = repo.RemoteUrl;
 
                         var notify = new GovNotifyAPI();
@@ -287,6 +272,9 @@ namespace Dashboard.Controllers
                             notify.SendEmail(member.Email, AppSettings.WelcomeTemplateId, personalisation);
                         }
                     }
+                    #endregion
+
+                    //Show success confirmation
                     return View("CustomError",new CustomErrorViewModel {  Title="Complete", Subtitle=$"Project successfully {(command=="Save Changes" ? "saved" : "created")}", Description=$"Your project was successfully {(command == "Save Changes" ? "saved" : "created and welcome emails sent to the team members")}.",  CallToAction="View projects...", ActionText="Continue", ActionUrl=Url.Action("Index")});
                 }
             }

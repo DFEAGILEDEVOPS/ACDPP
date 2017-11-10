@@ -139,6 +139,23 @@ namespace VstsApi.Net
             public string Url { get; set; }
             public string IsDefault { get; set; }
         }
+        public class Endpoint 
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+            public string Type { get; set; }
+            public string Url { get; set; }
+            public Authorization Authorization { get; set; }
+            public string IsReady { get; set; }
+        }
+
+        public class Authorization
+        {
+            public string Scheme { get; set; }
+            public Dictionary<string, string> Parameters { get; set; }
+        }
+
+
         #endregion
 
         #region Accounts
@@ -249,7 +266,7 @@ namespace VstsApi.Net
             }
         }
 
-        public static int CloneDefinition(string sourceProjectName, string sourceBuildName, string targetProjectName, Repo repo, Dictionary<string,string> variables=null, bool overwrite=false)
+        public static Definition CloneDefinition(string sourceProjectName, string sourceBuildName, string targetProjectName, Repo repo, Dictionary<string,string> variables=null, bool overwrite=false)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
@@ -265,7 +282,8 @@ namespace VstsApi.Net
 
                 var sourceBuild = buildClient.GetDefinitionAsync(sourceProject.Id,sourceBuildRef.Id).Result;
 
-                var targetProject = projects?.FirstOrDefault(p => p.Name.EqualsI(targetProjectName));
+
+                var targetProject = projects?.FirstOrDefault(p => p.Name.EqualsI(targetProjectName)) as TeamProjectReference;
                 if (sourceProject == null) throw new ArgumentException($"Target Project '{sourceProjectName}' does not exist");
 
                 var targetBuildRef = buildClient.GetDefinitionsAsync(targetProject.Id, sourceBuildName).Result.FirstOrDefault();
@@ -279,10 +297,38 @@ namespace VstsApi.Net
                 }
 
                 sourceBuild.Project = null;
-                sourceBuild.Repository.Id = repo.Id;
-                sourceBuild.Repository.Name = repo.Name;
-                sourceBuild.Repository.DefaultBranch = repo.DefaultBranch;
-                sourceBuild.Repository.Url = new Uri(repo.RemoteUrl);
+
+                //Check the repo service endpoint is available
+                var connectedServiceId = sourceBuild.Repository.Properties["connectedServiceId"];
+                Endpoint sourceEndpoint = null;
+                Endpoint targetEndpoint = null;
+                if (!string.IsNullOrWhiteSpace(connectedServiceId))
+                {
+                    targetEndpoint = GetEndpoint(targetProject.Id.ToString(), connectedServiceId);
+
+                    if (targetEndpoint == null)
+                    {
+                        sourceEndpoint = GetEndpoint(sourceProject.Id.ToString(), connectedServiceId);
+
+                        targetEndpoint = GetEndpoints(targetProject.Id.ToString()).FirstOrDefault(e => e.Type.EqualsI(sourceEndpoint.Type) && e.Url.EqualsI(sourceEndpoint.Url) && e.Authorization.Scheme.EqualsI(sourceEndpoint.Authorization.Scheme));
+                        //Create a new endpoint
+                        var authParameters = new Dictionary<string, string>();
+                        authParameters["username"] = "";
+                        authParameters["password"] = VSTSPersonalAccessToken;
+
+                        if (targetEndpoint == null)targetEndpoint = CreateEndpoint(targetProject.Id.ToString(), sourceEndpoint.Name, sourceEndpoint.Type, sourceEndpoint.Url, sourceEndpoint.Authorization.Scheme, authParameters);
+
+                    }
+                    sourceBuild.Repository.Properties["connectedServiceId"] = targetEndpoint.Id;
+                }
+
+                if (repo.Project.Id.ToGuid()==targetProject.Id && repo.Name.EqualsI(sourceBuild.Repository.Name))
+                {
+                    sourceBuild.Repository.Id = repo.Id;
+                    sourceBuild.Repository.Name = repo.Name;
+                    sourceBuild.Repository.DefaultBranch = repo.DefaultBranch;
+                    sourceBuild.Repository.Url = new Uri(repo.RemoteUrl);
+                }
 
                 var queue = GetQueues(targetProject.Id.ToString(),sourceBuild.Queue.Name).FirstOrDefault();
                 if (queue == null)
@@ -290,15 +336,15 @@ namespace VstsApi.Net
                 else if (sourceBuild.Queue.Id != queue.Id.ToInt32())
                     sourceBuild.Queue.Id = queue.Id.ToInt32();//TODO - keeps throwing "No agent queue found with identifier 302".
 
-                //sourceBuild.Queue = null;//TODO - keeps throwing "No agent queue found with identifier 302".
-
                 if (variables != null)
                     foreach (var key in variables.Keys)
                         sourceBuild.Variables[key].Value = variables[key];
+
                 sourceBuild.VariableGroups.Clear();
                 var targetBuild =buildClient.CreateDefinitionAsync(sourceBuild, targetProject.Id);
                 targetBuild.Wait();
-                return targetBuild.Id;
+                var definition = targetBuild?.Result;
+                return GetDefinitions(targetProject.Id.ToString(),definition.Name).FirstOrDefault();
             }
         }
 
@@ -1070,34 +1116,117 @@ namespace VstsApi.Net
         //    return json.id;
         //}
 
-        
+
 
         #endregion
 
         #region Endpoints
-        public static string CreateEndpoint(string projectId, string sourceUrl, string sourceUsername, string sourcePassword)
+
+        public static List<Endpoint> GetEndpoints(string project)
+        {
+            var apiVersion = "3.0-preview.1";
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{project}/_apis/distributedtask/serviceendpoints?api-version={apiVersion}", password: VSTSPersonalAccessToken)).Result;
+            var results = new List<Endpoint>();
+            foreach (var item in json.value)
+            {
+                var result = new Endpoint()
+                {
+                    Id = (string)item.id,
+                    Name = (string)item.name,
+                    Type = (string)item.type,
+                    IsReady = (string)item.isReady,
+                    Authorization = item.authorization.parameters != null ? null : new Authorization()
+                    {
+                        Scheme = item.authorization.scheme
+                    },
+                    Url = (string)item.url
+                };
+
+                if (result.Authorization != null && item.authorization.parameters != null)
+                {
+                    result.Authorization.Parameters = new Dictionary<string, string>();
+                    foreach (var link in item.authorization.parameters)
+                    {
+                        var key = (string)link.Name;
+                        var value = (string)link.Value;
+                        result.Authorization.Parameters[key] = value;
+                    }
+                }
+                results.Add(result);
+            }
+            return results;
+        }
+
+        public static Endpoint GetEndpoint(string project, string endpointId)
+        {
+            var apiVersion = "3.0-preview.1";
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{project}/_apis/distributedtask/serviceendpoints/{endpointId}?api-version={apiVersion}", password: VSTSPersonalAccessToken)).Result;
+            if (json == null) return null;
+            var result = new Endpoint()
+            {
+                Id = (string)json.id,
+                Name = (string)json.name,
+                Type = (string)json.type,
+                IsReady = (string)json.isReady,
+                Authorization = json.authorization.parameters == null ? null : new Authorization()
+                {
+                    Scheme = json.authorization.scheme
+                },
+                Url = (string)json.url
+            };
+
+            if (result.Authorization!=null && json.authorization.parameters != null)
+            {
+                result.Authorization.Parameters = new Dictionary<string, string>();
+                foreach (var link in json.authorization.parameters)
+                {
+                    var key = (string)link.Name;
+                    var value = (string)link.Value;
+                    result.Authorization.Parameters[key] = value;
+                }
+            }
+            return result;
+        }
+
+        public static Endpoint CreateEndpoint(string project, string name, string type, string url, string scheme, Dictionary<string,string> parameters)
         {
             const string apiVersion = "3.0-preview.1";
 
             var body = new
             {
-                name = "HelloWorld-Git-" + Guid.NewGuid(),
-                type = "Git",
-                url = sourceUrl,
-
+                name,
+                type,
+                url,
                 authorization = new
                 {
-                    scheme = "UsernamePassword",
-                    parameters = new
-                    {
-                        username = sourceUsername,
-                        password = sourcePassword
-                    },
+                    scheme,
+                    parameters,
                 }
             };
 
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{projectId}/_apis/distributedtask/serviceendpoints?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
-            return json.id;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{project}/_apis/distributedtask/serviceendpoints?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            var result = new Endpoint()
+            {
+                Id = (string)json.id,
+                Name = (string)json.name,
+                Type = (string)json.type,
+                IsReady = (string)json.isReady,
+                Authorization = new Authorization()
+                {
+                    Scheme = json.authorization.scheme
+                },
+                Url = (string)json.url
+            };
+
+            result.Authorization.Parameters = new Dictionary<string, string>();
+            foreach (var link in json.authorization.parameters)
+            {
+                var key = (string)link.Name;
+                var value = (string)link.Value;
+                result.Authorization.Parameters[key] = value;
+            }
+            return result;
         }
 
         #endregion

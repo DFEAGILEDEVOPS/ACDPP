@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VstsApi.Net", "VstsManager.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions.Net", "Extensions.Net\Extensions.Net.csproj", "{EB6AC325-F8FC-4B68-B6BD-C86437314E13}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard.Webjobs.Net", "Dashboard.Webjobs.Net\Dashboard.Webjobs.Net.csproj", "{B85FECE5-0B33-4871-B714-88D43CE48A57}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{EB6AC325-F8FC-4B68-B6BD-C86437314E13}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EB6AC325-F8FC-4B68-B6BD-C86437314E13}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EB6AC325-F8FC-4B68-B6BD-C86437314E13}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B85FECE5-0B33-4871-B714-88D43CE48A57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B85FECE5-0B33-4871-B714-88D43CE48A57}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B85FECE5-0B33-4871-B714-88D43CE48A57}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B85FECE5-0B33-4871-B714-88D43CE48A57}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
