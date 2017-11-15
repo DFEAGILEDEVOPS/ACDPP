@@ -26,6 +26,7 @@
     <UseGlobalApplicationHostFile />
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -285,6 +286,14 @@
     <Content Include="Scripts\jquery-1.10.2.min.map" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\AzureApi.Client.Net\AzureApi.Client.Net.csproj">
+      <Project>{35ccc32b-b2a1-4222-8303-cf0e00c01454}</Project>
+      <Name>AzureApi.Client.Net</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\AzureApi.Net\AzureApi.Net.csproj">
+      <Project>{e944918f-872f-4807-bd1c-cc14ebc7dd98}</Project>
+      <Name>AzureApi.Net</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Extensions.Net\Extensions.Net.csproj">
       <Project>{eb6ac325-f8fc-4b68-b6bd-c86437314e13}</Project>
       <Name>Extensions.Net</Name>

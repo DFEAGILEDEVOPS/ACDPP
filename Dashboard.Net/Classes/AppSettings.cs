@@ -11,6 +11,15 @@ namespace Dashboard.Classes
 {
     public class AppSettings
     {
+        public static string VaultUrl = ConfigurationManager.AppSettings["VaultUrl"];
+        public static string VaultClientId = ConfigurationManager.AppSettings["VaultClientId"];
+        public static string VaultClientSecret = ConfigurationManager.AppSettings["VaultClientSecret"];
+
+        public static string AzureTenantId = ConfigurationManager.AppSettings["AzureTenantId"];
+        public static string AzureResourceGroup = ConfigurationManager.AppSettings["AzureResourceGroup"];
+        public static string AppStartIP = ConfigurationManager.AppSettings["AppStartIP"];
+        public static string AppEndIP = ConfigurationManager.AppSettings["AppEndIP"];
+
         public static string SourceAccountName = ConfigurationManager.AppSettings["SourceAccountName"];
         public static string SourceProjectName = ConfigurationManager.AppSettings["SourceProjectName"];
         public static string SourceRepoName = ConfigurationManager.AppSettings["SourceRepoName"];

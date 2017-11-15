@@ -1,6 +1,10 @@
-﻿using System;
+﻿using AzureApi.Client.Net;
+using Dashboard.Classes;
+using Extensions;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
@@ -27,6 +31,24 @@ namespace Dashboard.Net
 
         protected void Application_Start()
         {
+            string serverName= "ACDPPTestServer1";
+            string adminUsername = $"{serverName}admin";
+            string adminPassword = Crypto.GeneratePassword();
+
+            serverName = AzureApi.Net.SqlDatabaseBuilder.CreateSqlServer(serverName, AppSettings.AzureResourceGroup, adminUsername, adminPassword, AppSettings.AppStartIP, AppSettings.AppEndIP);
+
+            string databaseName = "ACDPPTestDb1";
+            databaseName = AzureApi.Net.SqlDatabaseBuilder.CreateSqlDatabase(AppSettings.AzureResourceGroup, serverName, databaseName);
+
+            string connectionString = $"Server=tcp:{serverName}.database.windows.net,1433;Initial Catalog={databaseName};Persist Security Info=False;User ID={adminUsername};Password={adminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
+
+            var secretKey = $"{databaseName}_ConnectionString";
+            var secretId=VaultClient.SetSecret(secretKey, connectionString);
+            var secret = VaultClient.GetSecret(secretKey);
+
+            Debugger.Break();
+
+
             AreaRegistration.RegisterAllAreas();
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);

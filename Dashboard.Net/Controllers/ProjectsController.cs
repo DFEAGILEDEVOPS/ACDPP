@@ -226,7 +226,11 @@ namespace Dashboard.Controllers
                     if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build {build.Result}: '{build.Definition.Name}:{build.Id}' ");
                     #endregion
 
-                    #region Step 7: Update the team members
+                    #region Step 7: Create the SQL Server and Database
+
+                    #endregion
+
+                    #region Step 8: Update the team members
                     var teams = VstsManager.GetTeams(model.Id);
                     var team = teams[0];
                     var members=VstsManager.GetMembers(model.Id, team.Id);
@@ -259,7 +263,7 @@ namespace Dashboard.Controllers
                     }
                     #endregion
 
-                    #region Step 8: Welcome the team members
+                    #region Step 9: Welcome the team members
                     if (newMembers.Count>0)
                     {
                         var projectUrl = targetProject.Links["web"];
