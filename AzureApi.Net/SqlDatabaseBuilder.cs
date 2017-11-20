@@ -30,8 +30,10 @@ namespace AzureApi.Net
         {
             if (azure == null) azure = Core.Authenticate();
 
+            if (region == null) region = Core.GetResourceGroup(resourceGroup,azure)?.Region;
+
             var sqlServer = azure.SqlServers.Define(serverName)
-                .WithRegion(region ?? Region.UKSouth)
+                .WithRegion(region)
                 .WithExistingResourceGroup(resourceGroup)
                 .WithAdministratorLogin(adminUsername)
                 .WithAdministratorPassword(adminPassword)
@@ -95,12 +97,13 @@ namespace AzureApi.Net
             return server.Databases.List();
         }
 
-        internal static ISqlDatabase CreateDatabase(ISqlServer sqlServer, string databaseName)
+        internal static ISqlDatabase CreateDatabase(ISqlServer sqlServer, string databaseName, string serviceObjective="BASIC")
         {
             if (string.IsNullOrWhiteSpace(databaseName)) databaseName = SdkContext.RandomResourceName("sqldatabase", 20);
 
             var database = sqlServer.Databases
                            .Define(databaseName)
+                           .WithServiceObjective(serviceObjective)
                            .Create();
             return database;
         }

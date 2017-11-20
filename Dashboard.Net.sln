@@ -11,9 +11,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions.Net", "Extension
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard.Webjobs.Net", "Dashboard.Webjobs.Net\Dashboard.Webjobs.Net.csproj", "{B85FECE5-0B33-4871-B714-88D43CE48A57}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureApi.Net", "AzureApi.Net\AzureApi.Net.csproj", "{E944918F-872F-4807-BD1C-CC14EBC7DD98}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureApi.Net", "AzureApi.Net\AzureApi.Net.csproj", "{E944918F-872F-4807-BD1C-CC14EBC7DD98}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureApi.Client.Net", "AzureApi.Client.Net\AzureApi.Client.Net.csproj", "{35CCC32B-B2A1-4222-8303-CF0E00C01454}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureApi.Client.Net", "AzureApi.Client.Net\AzureApi.Client.Net.csproj", "{35CCC32B-B2A1-4222-8303-CF0E00C01454}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

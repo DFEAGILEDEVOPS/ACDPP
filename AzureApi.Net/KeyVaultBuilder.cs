@@ -40,8 +40,10 @@ namespace AzureApi.Net
 
             if (azure == null) azure = Core.Authenticate();
 
+            if (region == null) region = Core.GetResourceGroup(resourceGroup, azure)?.Region;
+
             var vault = azure.Vaults.Define(vaultName)
-                .WithRegion(region ?? Region.UKSouth)
+                .WithRegion(region)
                 .WithExistingResourceGroup(resourceGroup)
                 .WithEmptyAccessPolicy()
                 .Create();

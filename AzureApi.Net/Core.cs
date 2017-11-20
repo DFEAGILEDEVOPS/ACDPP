@@ -16,6 +16,7 @@ namespace AzureApi.Net
         public static string VaultClientId = ConfigurationManager.AppSettings["VaultClientId"];
         public static string VaultClientSecret = ConfigurationManager.AppSettings["VaultClientSecret"];
         public static string AzureTenantId = ConfigurationManager.AppSettings["AzureTenantId"];
+        public static string AzureSubscriptionId = ConfigurationManager.AppSettings["AzureSubscriptionId"];
 
         internal static IAzure Authenticate()
         {
@@ -27,7 +28,7 @@ namespace AzureApi.Net
                 .Configure()
                 .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
                 .Authenticate(credentials)
-                .WithDefaultSubscription();
+                .WithSubscription(AzureSubscriptionId);
 
             return azure;
         }
@@ -49,17 +50,15 @@ namespace AzureApi.Net
             return groups;
         }
 
-        internal static IResourceGroup CreateResourceGroup(string groupName=null, Region region = null, IAzure azure = null)
+        internal static IResourceGroup CreateResourceGroup(string groupName, Region region, IAzure azure = null)
         {
-            if (string.IsNullOrWhiteSpace(groupName)) groupName = SdkContext.RandomResourceName("rgACDPP", 20);
-
             var group = GetResourceGroup(groupName);
             if (group != null) return group;
 
             if (azure == null) azure = Authenticate();
 
             group = azure.ResourceGroups.Define(groupName)
-                .WithRegion(region ?? Region.UKSouth)
+                .WithRegion(region)
                 .Create();
 
             return group;
