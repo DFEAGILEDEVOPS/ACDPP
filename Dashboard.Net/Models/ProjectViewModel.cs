@@ -26,6 +26,6 @@ namespace Dashboard.Net.Models
 
         public List<TeamMemberViewModel> TeamMembers { get; set; } = new List<TeamMemberViewModel>();
 
-        public NameValueCollection Properties{ get; set; }
+        public Dictionary<string,string> Properties{ get; set; }
     }
 }

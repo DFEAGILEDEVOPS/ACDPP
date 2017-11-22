@@ -20,12 +20,12 @@ namespace AzureApi.Client.Net
         }
 
         //Get the json config settings
-        public static string VaultUrl;
-        public static string VaultClientId;
-        public static string VaultClientSecret;
-        public static string AzureTenantId;
+        public string VaultUrl;
+        public string VaultClientId;
+        public string VaultClientSecret;
+        public string AzureTenantId;
 
-        public static string GetSecret(string key)
+        public string GetSecret(string key)
         {
             var client = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(GetAccessTokenAsync),new System.Net.Http.HttpClient());
             
@@ -34,7 +34,7 @@ namespace AzureApi.Client.Net
             return secret?.Result?.Value;
         }
 
-        public static string SetSecret(string key, string value)
+        public string SetSecret(string key, string value)
         {
             var client = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(GetAccessTokenAsync), new System.Net.Http.HttpClient());
 
@@ -58,7 +58,7 @@ namespace AzureApi.Client.Net
         //    return result.AccessToken;
         //}
 
-        private static async Task<string> GetAccessTokenAsync(string authority, string resource, string scope)
+        private async Task<string> GetAccessTokenAsync(string authority, string resource, string scope)
         {
             var postData = new List<KeyValuePair<string, string>>
             {

@@ -18,7 +18,7 @@ namespace AzureApi.Net
         public static string AzureTenantId = ConfigurationManager.AppSettings["AzureTenantId"];
         public static string AzureSubscriptionId = ConfigurationManager.AppSettings["AzureSubscriptionId"];
 
-        internal static IAzure Authenticate()
+        public static IAzure Authenticate()
         {
             //=================================================================
             // Authenticate
@@ -29,33 +29,34 @@ namespace AzureApi.Net
                 .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
                 .Authenticate(credentials)
                 .WithSubscription(AzureSubscriptionId);
-
             return azure;
         }
 
 
 
         #region Resource Group
-        internal static IResourceGroup GetResourceGroup(string groupName, IAzure azure = null)
+        public static IResourceGroup GetResourceGroup(string groupName, IAzure azure = null)
         {
             if (azure == null) azure = Authenticate();
             var group = azure.ResourceGroups.GetByName(groupName);
             return group;
         }
 
-        internal static IEnumerable<IResourceGroup> ListResourceGroups(IAzure azure = null)
+        public static IEnumerable<IResourceGroup> ListResourceGroups(IAzure azure = null)
         {
             if (azure == null) azure = Authenticate();
             var groups = azure.ResourceGroups.List();
             return groups;
         }
 
-        internal static IResourceGroup CreateResourceGroup(string groupName, Region region, IAzure azure = null)
+        public static IResourceGroup CreateResourceGroup(string groupName, Region region=null, IAzure azure = null)
         {
+
             var group = GetResourceGroup(groupName);
             if (group != null) return group;
 
             if (azure == null) azure = Authenticate();
+            if (region == null) region = Region.EuropeWest;
 
             group = azure.ResourceGroups.Define(groupName)
                 .WithRegion(region)
@@ -64,12 +65,13 @@ namespace AzureApi.Net
             return group;
         }
 
-        internal static void DeleteResourceGroup(string groupName, IAzure azure = null)
+        public static void DeleteResourceGroup(string groupName, IAzure azure = null)
         {
             if (azure == null) azure = Authenticate();
             azure.ResourceGroups.DeleteByName(groupName);
         }
         #endregion
-        
+
+
     }
 }

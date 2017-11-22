@@ -38,8 +38,13 @@ namespace Dashboard.Classes
 
         public static string ProjectCreatedBy = ConfigurationManager.AppSettings["ProjectCreatedBy"].ToStringOr(Assembly.GetExecutingAssembly().GetName().Name);
 
+        public static string GovNotifyClientRef = ConfigurationManager.AppSettings["GovNotifyClientRef"];
         public static string GovNotifyApiKey = ConfigurationManager.AppSettings["GovNotifyApiKey"];
         public static string GovNotifyApiTestKey = ConfigurationManager.AppSettings["GovNotifyApiTestKey"];
         public static string WelcomeTemplateId = ConfigurationManager.AppSettings["WelcomeTemplateId"];
+        public static string ErrorTemplateId = ConfigurationManager.AppSettings["ErrorTemplateId"];
+
+        public static string AzureStorageConnectionString = ConfigurationManager.AppSettings["AzureStorageConnectionString"];
+
     }
 }

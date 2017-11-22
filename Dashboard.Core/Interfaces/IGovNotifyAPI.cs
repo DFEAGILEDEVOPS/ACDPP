@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Notify.Models;
 
-namespace Dashboard.Classes
+namespace Dashboard.NetStandard.Classes
 {
     public interface IGovNotifyAPI
     {

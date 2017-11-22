@@ -15,26 +15,22 @@ namespace AzureApi.Net
 
     public class KeyVaultBuilder
     {
-        public static string VaultUrl = ConfigurationManager.AppSettings["VaultUrl"];
-        public static string VaultClientId = ConfigurationManager.AppSettings["VaultClientId"];
-        public static string VaultClientSecret = ConfigurationManager.AppSettings["VaultClientSecret"];
-
         #region Sql KeyVault
-        internal static IVault GetKeyVault(string id, string resourceGroup, IAzure azure = null)
+        public static IVault GetKeyVault(string id, string resourceGroup, IAzure azure = null)
         {
             if (azure == null) azure = Core.Authenticate();
             var vault = azure.Vaults.GetById(id);
             return vault;
         }
 
-        internal static IEnumerable<IVault> ListKeyVaults(string resourceGroup, IAzure azure = null)
+        public static IEnumerable<IVault> ListKeyVaults(string resourceGroup, IAzure azure = null)
         {
             if (azure == null) azure = Core.Authenticate();
             var vaults = azure.Vaults.ListByResourceGroup(resourceGroup);
             return vaults;
         }
 
-        internal static IVault CreateKeyVault(string vaultName, string resourceGroup, string adminUsername, string adminPassword, Region region=null, IAzure azure=null)
+        public static IVault CreateKeyVault(string vaultName, string resourceGroup, Region region=null, IAzure azure=null)
         {
             if (string.IsNullOrWhiteSpace(vaultName)) vaultName = SdkContext.RandomResourceName("ACDPP-VAULT", 20);
 
@@ -50,14 +46,14 @@ namespace AzureApi.Net
 
             return vault;
         }
-      
-        internal static void DeleteKeyVault(string vaultName, string resourceGroup, IAzure azure = null)
+
+        public static void DeleteKeyVault(string vaultName, string resourceGroup, IAzure azure = null)
         {
             if (azure == null) azure = Core.Authenticate();
             azure.Vaults.DeleteByResourceGroup(resourceGroup, vaultName);
         }
 
-        internal static void DeleteKeyVault(IVault vault, IAzure azure = null)
+        public static void DeleteKeyVault(IVault vault, IAzure azure = null)
         {
             if (azure == null) azure = Core.Authenticate();
             azure.Vaults.DeleteById(vault.Id);

@@ -12,15 +12,17 @@ using Microsoft.VisualStudio.Services.Common;
 using Extensions;
 using System.Configuration;
 using Task = System.Threading.Tasks.Task;
+using Build = VstsApi.Net.Classes.Build;
+using Process = VstsApi.Net.Classes.Process;
 using System.Collections.Specialized;
 using Extensions.Net;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.VisualStudio.Services.Operations;
 using System.Threading.Tasks;
 using System.Threading;
-using Newtonsoft.Json;
 using System.Net.Http;
 using Microsoft.TeamFoundation.Build.WebApi;
+using VstsApi.Net.Classes;
 
 namespace VstsApi.Net
 {
@@ -44,144 +46,55 @@ namespace VstsApi.Net
         const string ApiVersion = "1.0";
         private static readonly int intervalInSec=2;
         private static readonly int maxOpTimeInSeconds=60;
-
-        #region Classes
-
-        public enum LicenceTypes
-        {
-            Stakeholder=1,
-            Basic=2,
-            Professional=3,
-            Advanced=4,
-            Msdn=5
-        }
-
-        public class Project
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string Description { get; set; }
-            public string State { get; set; }
-            public string Url { get; set; }
-            public Dictionary<string,string> Links { get; set; }
-            public string DefaultTeamId { get; set; }
-        }
-        public class Team
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string Description { get; set; }
-            public string Url { get; set; }
-            public string IdentityUrl { get; set; }
-        }
-        public class Member
-        {
-            public string Id { get; set; }
-            public string DisplayName { get; set; }
-            public string UniqueName { get; set; }
-            public string Url { get; set; }
-            public string ImageUrl { get; set; }
-        }
-        public class Repo
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string DefaultBranch { get; set; }
-            public string Url { get; set; }
-            public string RemoteUrl { get; set; }
-            public Project Project { get; set; }
-        }
-
-        public class Build
-        {
-            public string Id { get; set; }
-            public string Url { get; set; }
-            public Definition Definition { get; set; }
-            public string SourceBranch { get; set; }
-            public string Parameters { get; set; }
-            public string QueueTime { get; set; }
-            public string StartTime { get; set; }
-            public string FinishTime { get; set; }
-            public string Status { get; set; }
-            public string Result { get; set; }
-            public string Reason { get; set; }
-        }
-
-        public class Definition
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string Description { get; set; }
-            public string Url { get; set; }
-            public string State { get; set; }
-            public string Revision { get; set; }
-        }
-
-        public class Queue
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public QueuePool Pool { get; set; }
-            public string GroupScopeId { get; set; }
-        }
-        public class QueuePool
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string Scope { get; set; }
-        }
-
-        public class Process
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string Description { get; set; }
-            public string Url { get; set; }
-            public string IsDefault { get; set; }
-        }
-        public class Endpoint 
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string Type { get; set; }
-            public string Url { get; set; }
-            public Authorization Authorization { get; set; }
-            public string IsReady { get; set; }
-        }
-
-        public class Authorization
-        {
-            public string Scheme { get; set; }
-            public Dictionary<string, string> Parameters { get; set; }
-        }
-
-
-        #endregion
-
         #region Accounts
         private static VssConnection GetConnection(string collectionUrl, string personalAccessToken)
         {
             return new VssConnection(new Uri(collectionUrl), new VssBasicCredential(string.Empty, personalAccessToken));
         }
 
-        public static Identity GetAccountUserIdentity(string accountName, string userEmail)
+        public static Classes.Identity GetAccountUserIdentity(string accountName, string userEmail)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var identityClient = connection.GetClient<IdentityHttpClient>();
-                return identityClient.ReadIdentitiesAsync(IdentitySearchFilter.AccountName, userEmail).Result.FirstOrDefault();                    
+                var identity=identityClient.ReadIdentitiesAsync(IdentitySearchFilter.AccountName, userEmail).Result.FirstOrDefault();
+                return identity==null ? null : new Classes.Identity
+                {
+                    Id = identity.Id,
+                    UniqueUserId = identity.UniqueUserId,
+                    CustomDisplayName = identity.CustomDisplayName,
+                    DisplayName = identity.DisplayName,
+                    IsContainer = identity.IsContainer,
+                    LocalScopeId = identity.LocalScopeId,
+                    ProviderDisplayName = identity.ProviderDisplayName,
+                    ResourceVersion = identity.ResourceVersion,
+                    SubjectDescriptor = identity.SubjectDescriptor,
+                    IsActive = identity.IsActive,
+                };
             }
         }
-        public static IdentitiesCollection GetAccountUserIdentities(string accountName)
+        public static List<Classes.Identity>GetAccountUserIdentities(string accountName)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var identityClient = connection.GetClient<IdentityHttpClient>();
-                return identityClient.ReadIdentitiesAsync(IdentitySearchFilter.General,"").Result;
+                return identityClient.ReadIdentitiesAsync(IdentitySearchFilter.General,"").Result.Select(identity=> new Classes.Identity()
+                {
+                    Id = identity.Id,
+                    UniqueUserId = identity.UniqueUserId,
+                    CustomDisplayName = identity.CustomDisplayName,
+                    DisplayName = identity.DisplayName,
+                    IsContainer = identity.IsContainer,
+                    LocalScopeId = identity.LocalScopeId,
+                    ProviderDisplayName = identity.ProviderDisplayName,
+                    ResourceVersion = identity.ResourceVersion,
+                    SubjectDescriptor = identity.SubjectDescriptor,
+                    IsActive = identity.IsActive,
+                }).ToList();
             }
         }
 
-        public static Identity CreateAccountIdentity(string accountName, string userEmail)
+        public static Classes.Identity CreateAccountIdentity(string accountName, string userEmail)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
@@ -193,13 +106,13 @@ namespace VstsApi.Net
                 // The first call is to see if the user already exists in the account.
                 // Since this is the first call to the service, this will trigger the sign-in window to pop up.
                 Console.WriteLine("Sign in as the admin of account {0}. You will see a sign-in window on the desktop.", accountName);
-                var userIdentity = identityClient.ReadIdentitiesAsync(IdentitySearchFilter.AccountName, userEmail).Result.FirstOrDefault();
+                var identity = identityClient.ReadIdentitiesAsync(IdentitySearchFilter.AccountName, userEmail).Result.FirstOrDefault();
 
                 // If the identity is null, this is a user that has not yet been added to the account.
                 // We'll need to add the user as a "bind pending" - meaning that the email address of the identity is 
                 // recorded so that the user can log into the account, but the rest of the details of the identity 
                 // won't be filled in until first login.
-                if (userIdentity == null)
+                if (identity == null)
                 {
                     Console.WriteLine("Creating a new identity and adding it to the collection's licensed users group.");
 
@@ -239,13 +152,25 @@ namespace VstsApi.Net
                     // for this newly-added user. Without being added to the licensed users group, the identity 
                     // can't exist in the account.
                     bool result = identityClient.AddMemberToGroupAsync(collectionLicensedUsersGroupDescriptor, newUserDesciptor).Result;
-                    userIdentity = identityClient.ReadIdentitiesAsync(IdentitySearchFilter.AccountName, userEmail).Result.FirstOrDefault();
+                    identity = identityClient.ReadIdentitiesAsync(IdentitySearchFilter.AccountName, userEmail).Result.FirstOrDefault();
                 }
-                return userIdentity;
+                return identity == null ? null : new Classes.Identity
+                {
+                    Id = identity.Id,
+                    UniqueUserId = identity.UniqueUserId,
+                    CustomDisplayName = identity.CustomDisplayName,
+                    DisplayName = identity.DisplayName,
+                    IsContainer = identity.IsContainer,
+                    LocalScopeId = identity.LocalScopeId,
+                    ProviderDisplayName = identity.ProviderDisplayName,
+                    ResourceVersion = identity.ResourceVersion,
+                    SubjectDescriptor = identity.SubjectDescriptor,
+                    IsActive = identity.IsActive,
+                };
             }
         }
 
-        public static List<Microsoft.TeamFoundation.Build.WebApi.Build> GetBuilds(string projectName, string buildName, params string[] parameters)
+        public static List<Build> GetBuilds(string projectName, string buildName, params string[] parameters)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
@@ -262,7 +187,7 @@ namespace VstsApi.Net
                 if (buildRef == null) throw new ArgumentException($"Build '{buildName}' does not exist");
 
                 var builds = buildClient.GetBuildsAsync(project.Id,new[] { buildRef.Id }).Result;
-                return builds;
+                return builds.Select(b => new Classes.Build { Id = b.Id.ToString(), Url = b.Url, Status=b.Status.Value.ToString(),StartTime=b.StartTime.Value.ToString(), FinishTime=b.FinishTime.Value.ToString(), SourceBranch=b.SourceBranch, Result=b.Result.Value.ToString(), Reason=b.Reason.ToString(), QueueTime=b.QueueTime.Value.ToString() }).ToList();
             }
         }
 
@@ -471,7 +396,7 @@ namespace VstsApi.Net
             return result;
         }
 
-        public static Build QueueBuild(Guid projectId, int definitionId, string parameters = null, string branch = null)
+        public static Build QueueBuild(string project, int definitionId, string parameters = null, string branch = null)
         {
             var apiVersion = "2.0";
 
@@ -487,7 +412,7 @@ namespace VstsApi.Net
                 parameters = parameters
             };
 
-            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{projectId}/_apis/build/builds?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{project}/_apis/build/builds?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
 
             var result = new Build()
             {
@@ -513,14 +438,14 @@ namespace VstsApi.Net
             return result;
         }
 
-        public static Build WaitForBuild(string projectId,Build build, int timeoutSeconds=120)
+        public static Build WaitForBuild(string project,Build build, int timeoutSeconds=120)
         {
             DateTime expiration = DateTime.Now.AddSeconds(timeoutSeconds);
             while (!build.Status.EqualsI("Completed"))
             {
                 if (DateTime.Now > expiration) throw new Exception($"Build '{build.Definition.Name}:{build.Id}' did not complete in {timeoutSeconds} seconds. Please try again.");
                 Thread.Sleep(intervalInSec * 1000);
-                build = GetBuild(projectId,build.Id.ToInt32());
+                build = GetBuild(project,build.Id.ToInt32());
             }
             return build;
         }
@@ -562,7 +487,7 @@ namespace VstsApi.Net
             }
         }
 
-        public static void AssignLicenceToIdentity(Identity userIdentity, LicenceTypes licenceType = LicenceTypes.Basic)
+        public static void AssignLicenceToIdentity(Guid identityId, LicenceTypes licenceType = LicenceTypes.Basic)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
@@ -584,17 +509,17 @@ namespace VstsApi.Net
                         licence = MsdnLicense.Eligible;
                         break;
                 }
-                var entitlement = licensingClient.AssignEntitlementAsync(userIdentity.Id, licence).Result;
+                var entitlement = licensingClient.AssignEntitlementAsync(identityId, licence).Result;
             }
         }
 
-        public static LicenceTypes? GetIdentityLicence(Identity userIdentity, LicenceTypes licenceType = LicenceTypes.Basic)
+        public static LicenceTypes? GetIdentityLicence(Guid identityId, LicenceTypes licenceType = LicenceTypes.Basic)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
                 var licensingClient = connection.GetClient<LicensingHttpClient>();
 
-                var entitlement = licensingClient.GetAccountEntitlementAsync(userIdentity.Id).Result;
+                var entitlement = licensingClient.GetAccountEntitlementAsync(identityId).Result;
                 if (entitlement == null) return null;
 
                 if (entitlement.License == AccountLicense.Stakeholder) return LicenceTypes.Stakeholder;
@@ -603,7 +528,7 @@ namespace VstsApi.Net
                 if (entitlement.License == AccountLicense.Express) return LicenceTypes.Basic;
                 if (entitlement.License == MsdnLicense.Eligible) return LicenceTypes.Msdn;
                 if (entitlement.License.IsAny(MsdnLicense.Eligible, MsdnLicense.Enterprise, MsdnLicense.Platforms, MsdnLicense.Premium, MsdnLicense.Professional, MsdnLicense.TestProfessional, MsdnLicense.Ultimate)) return LicenceTypes.Msdn;
-                throw new Exception($"Unknown license type '{entitlement.License}' for user identity '{userIdentity.DisplayName}'");
+                throw new Exception($"Unknown license type '{entitlement.License}' for user identity '{identityId}'");
             }
         }
 
@@ -863,24 +788,24 @@ namespace VstsApi.Net
             return json.id;
         }
 
-        public static NameValueCollection GetProjectProperties(string projectId, params string[]keys)
+        public static Dictionary<string, string> GetProjectProperties(string projectId, params string[]keys)
         {
             var apiVersion = "4.0-preview";
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceInstanceUrl}/_apis/projects/{projectId}/properties?{(keys==null || keys.Length==0 ? "" : $"keys={keys.ToDelimitedString()}&")}api-version={apiVersion}", password: VSTSPersonalAccessToken)).Result;
-            var results = new NameValueCollection();
+            var results = new Dictionary<string,string>();
             foreach (var item in json.value)
             {
-                results.Add((string)item.name, (string)item.value);
+                results[(string)item.name]= (string)item.value;
             }
             return results;
         }
 
-        public static void SetProjectProperties(string projectId, NameValueCollection properties)
+        public static void SetProjectProperties(string projectId, Dictionary<string,string> properties)
         {
             var apiVersion = "4.0-preview";
 
             var body = new List<object>();
-            foreach(var key in properties.AllKeys)
+            foreach(var key in properties.Keys)
             {
                 body.Add(new
                 {
@@ -940,7 +865,7 @@ namespace VstsApi.Net
                 {
                     Id = (string)item.id,
                     DisplayName = (string)item.displayName,
-                    UniqueName = (string)item.uniqueName,
+                    EmailAddress = (string)item.uniqueName,
                     Url = (string)item.url,
                     ImageUrl = (string)item.imageUrl
                 });

@@ -5,15 +5,20 @@ using Notify.Client;
 using Notify.Models;
 using Extensions;
 
-namespace Dashboard.Classes
+namespace Dashboard.NetStandard.Classes
 {
     public class GovNotifyAPI : IGovNotifyAPI
     {
-        private const string _clientReference = "GpgAlphaTest";
-        private static readonly string _apiKey = AppSettings.GovNotifyApiKey;
-        private static readonly string _apiTestKey = AppSettings.GovNotifyApiTestKey;
+        public GovNotifyAPI(string clientReference, string apiKey, string testApiKey=null)
+        {
+            _clientReference = clientReference;
+            _apiKey = apiKey;
+            _apiTestKey = testApiKey;
+        }
 
-        public static readonly string WelcomeTemplateId = AppSettings.WelcomeTemplateId;
+        private readonly string _clientReference;
+        private readonly string _apiKey;
+        private readonly string _apiTestKey;
 
         public void SetStatus(string status)
         {

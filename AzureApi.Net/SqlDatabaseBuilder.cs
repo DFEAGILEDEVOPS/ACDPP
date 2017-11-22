@@ -12,21 +12,21 @@ namespace AzureApi.Net
     public class SqlDatabaseBuilder
     {
         #region Sql Server
-        internal static ISqlServer GetServer(string serverName, string resourceGroup, IAzure azure = null)
+        public static ISqlServer GetServer(string serverName, string resourceGroup, IAzure azure = null)
         {
             if (azure == null) azure = Core.Authenticate();
             var server = azure.SqlServers.GetByResourceGroup(resourceGroup, serverName);
             return server;
         }
 
-        internal static IEnumerable<ISqlServer> ListServers(string resourceGroup, IAzure azure = null)
+        public static IEnumerable<ISqlServer> ListServers(string resourceGroup, IAzure azure = null)
         {
             if (azure == null) azure = Core.Authenticate();
             var servers = azure.SqlServers.ListByResourceGroup(resourceGroup);
             return servers;
         }
 
-        internal static ISqlServer CreateServer(string serverName, string resourceGroup, string adminUsername, string adminPassword, Region region=null, IAzure azure=null)
+        public static ISqlServer CreateServer(string serverName, string resourceGroup, string adminUsername, string adminPassword, Region region=null, IAzure azure=null)
         {
             if (azure == null) azure = Core.Authenticate();
 
@@ -40,14 +40,14 @@ namespace AzureApi.Net
                 .Create();
             return sqlServer;
         }
-      
-        internal static void DeleteServer(string serverName, string resourceGroup, IAzure azure = null)
+
+        public static void DeleteServer(string serverName, string resourceGroup, IAzure azure = null)
         {
             if (azure == null) azure = Core.Authenticate();
             azure.SqlServers.DeleteByResourceGroup(resourceGroup, serverName);
         }
 
-        internal static void DeleteServer(ISqlServer server, IAzure azure = null)
+        public static void DeleteServer(ISqlServer server, IAzure azure = null)
         {
             if (azure == null) azure = Core.Authenticate();
             azure.SqlServers.DeleteById(server.Id);
@@ -55,17 +55,17 @@ namespace AzureApi.Net
         #endregion
 
         #region Firewall rules
-        internal static ISqlFirewallRule GetFirewallRule(ISqlServer server, string ruleName)
+        public static ISqlFirewallRule GetFirewallRule(ISqlServer server, string ruleName)
         {
             return server.FirewallRules.Get(ruleName);
         }
 
-        internal static IEnumerable<ISqlFirewallRule> ListFirewallRules(ISqlServer server)
+        public static IEnumerable<ISqlFirewallRule> ListFirewallRules(ISqlServer server)
         {
             return server.FirewallRules.List();
         }
 
-        internal static ISqlFirewallRule CreateFirewallRule(ISqlServer server, string ruleName, string startIP, string endIP = null)
+        public static ISqlFirewallRule CreateFirewallRule(ISqlServer server, string ruleName, string startIP, string endIP = null)
         {
             ISqlFirewallRule rule;
             if (string.IsNullOrWhiteSpace(endIP) || endIP.Equals(startIP))
@@ -80,24 +80,24 @@ namespace AzureApi.Net
             return rule;
         }
 
-        internal static void DeleteFirewallRule(ISqlServer server, string ruleName)
+        public static void DeleteFirewallRule(ISqlServer server, string ruleName)
         {
             server.FirewallRules.Delete(ruleName);
         }
         #endregion
 
         #region Sql Databases
-        internal static ISqlDatabase GetDatabase(ISqlServer server,string databaseName)
+        public static ISqlDatabase GetDatabase(ISqlServer server,string databaseName)
         {
             return server.Databases.Get(databaseName);
         }
 
-        internal static IEnumerable<ISqlDatabase> ListDatabases(ISqlServer server)
+        public static IEnumerable<ISqlDatabase> ListDatabases(ISqlServer server)
         {
             return server.Databases.List();
         }
 
-        internal static ISqlDatabase CreateDatabase(ISqlServer sqlServer, string databaseName, string serviceObjective="BASIC")
+        public static ISqlDatabase CreateDatabase(ISqlServer sqlServer, string databaseName, string serviceObjective="BASIC")
         {
             if (string.IsNullOrWhiteSpace(databaseName)) databaseName = SdkContext.RandomResourceName("sqldatabase", 20);
 
@@ -108,13 +108,13 @@ namespace AzureApi.Net
             return database;
         }
 
-        internal static void DeleteDatabase(ISqlServer sqlServer, string databaseName)
+        public static void DeleteDatabase(ISqlServer sqlServer, string databaseName)
         {
             sqlServer.Databases.Delete(databaseName);
         }
         #endregion
 
-        public static string CreateSqlServer(string serverName, string resourceGroup, string adminUsername, string adminPassword, string startIP, string endIP)
+        public static ISqlServer CreateSqlServer(string serverName, string resourceGroup, string adminUsername, string adminPassword, string startIP, string endIP)
         {
             //Create the server if it doesnt already exist
             var server = CreateServer(serverName,resourceGroup,adminUsername,adminPassword);
@@ -125,10 +125,10 @@ namespace AzureApi.Net
             if (rule == null) rule=CreateFirewallRule(server, ruleName, startIP, endIP);
 
             //return the server name
-            return server.Name;
+            return server;
         }
 
-        public static string CreateSqlDatabase(string resourceGroup, string serverName, string databaseName)
+        public static ISqlDatabase CreateSqlDatabase(string resourceGroup, string serverName, string databaseName)
         {
             //Create the server if it doesnt already exist
             var server = GetServer(serverName, resourceGroup);
@@ -139,7 +139,7 @@ namespace AzureApi.Net
             if (database == null) database=CreateDatabase(server, databaseName);
             
             //return the server name
-            return database.Name;
+            return database;
         }
 
     }

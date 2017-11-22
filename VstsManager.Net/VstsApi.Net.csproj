@@ -85,25 +85,42 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\Build\BuildDefinition.cs" />
-    <Compile Include="Classes\Build\BuildDefinition1.cs" />
+    <Compile Include="Authorization.cs" />
+    <Compile Include="Classes\Build.cs" />
+    <Compile Include="Classes\AppSettings.cs" />
+    <Compile Include="Classes\Definition.cs" />
+    <Compile Include="Classes\Endpoint.cs" />
+    <Compile Include="Classes\Entensions.cs" />
+    <Compile Include="Classes\LicenceTypes.cs" />
+    <Compile Include="Classes\Member.cs" />
+    <Compile Include="Classes\Process.cs" />
+    <Compile Include="Classes\Project.cs" />
+    <Compile Include="Classes\Queue.cs" />
+    <Compile Include="Classes\QueuePool.cs" />
+    <Compile Include="Classes\Repo.cs" />
+    <Compile Include="Classes\Team.cs" />
+    <Compile Include="Classes\ProjectProperties.cs" />
+    <Compile Include="Classes\RoleTypes.cs" />
+    <Compile Include="Classes\StateFilters.cs" />
+    <Compile Include="Classes\Identity.cs" />
     <Compile Include="VstsManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="BuildDefinition.json" />
-    <None Include="BuildDefinition1.json" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Extensions.Net\Extensions.Net.csproj">
-      <Project>{eb6ac325-f8fc-4b68-b6bd-c86437314e13}</Project>
-      <Name>Extensions.Net</Name>
+    <ProjectReference Include="..\Dashboard.Core\Dashboard.NetStandard.Core.csproj">
+      <Project>{f024a90c-cd9e-4317-96b8-d8cec1b8c6dc}</Project>
+      <Name>Dashboard.NetStandard.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Extensions.NetStandard\Extensions.NetStandard.csproj">
+      <Project>{e547a169-4b48-40cc-9fdb-2d97f1be5fe7}</Project>
+      <Name>Extensions.NetStandard</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
