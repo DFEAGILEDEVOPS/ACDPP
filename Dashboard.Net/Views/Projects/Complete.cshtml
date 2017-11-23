@@ -16,7 +16,7 @@
                     @(Model.Id == null ? "Creating Project {Model.Name}..." : $"Saving Project {Model.Name}...")
                 </h1>
                 <h2 class="heading-medium">Project Details</h2>
-                @if (Model.Id == null)
+                if (Model.Id == null)
                 {
                     <p>Your project is being created in the background. Team members will receive a welcome email when complete.</p>
                 }
@@ -25,34 +25,34 @@
                     <p>Your changes are being saved in the background.</p>
                 }
 
-                <h2 class="heading-medium">Queued Steps</h2>
+                <h2 class="heading-medium">Steps</h2>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
                     Create Visual Studio Team Services (VSTS) Team Project 
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Add team members to VSTS Team Project
+                    Add team members to this VSTS Team Project
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Create Git repository on VSTS 
+                    Create private Git repository on VSTS for this project
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Clone Sample source code to new Git repository on VSTS
+                    Clone sample source code to private Git repository on VSTS
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Create dedicated resource group on Azure
+                    Create a dedicated resource group for this projects resources on Azure
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Add SQL Server to resource group
+                    Add a SQL Server to resource group with strong authentication credentials
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    White list sample application IP address with SQL Server
+                    Allow the sample application through the firewall of the SQL Server
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
@@ -99,7 +99,7 @@
           <fieldset>
                     <div class="form-group">
                         <br>
-                        <a href="@Url.Action("Index")" class="link-button">Continue</a>
+                        <a href="@Url.Action("Index")" class="button">Continue</a>
                     </div>
                 </fieldset>
             }
