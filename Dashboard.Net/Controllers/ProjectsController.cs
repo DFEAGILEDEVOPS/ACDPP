@@ -36,18 +36,16 @@ namespace Dashboard.Controllers
                 if (!project.State.EqualsI("WellFormed","CreatePending","New")) continue;
                 var newProject = new ProjectViewModel();
                 newProject.Properties = VstsManager.GetProjectProperties(project.Id, ProjectProperties.All);
+                if (!newProject.Properties.ContainsKey(ProjectProperties.CreatedBy) || newProject.Properties[ProjectProperties.CreatedBy] != AppSettings.ProjectCreatedBy) continue;
 
                 newProject.Id = project.Id;
                 newProject.Name = project.Name;
                 newProject.Description = project.Description;
-                newProject.CostCode = newProject.Properties[ProjectProperties.CostCode];
-                if (newProject.Properties.ContainsKey(ProjectProperties.CreatedBy) && newProject.Properties[ProjectProperties.CreatedBy] == AppSettings.ProjectCreatedBy)
-                {
-                    var p = VstsManager.GetProject(newProject.Id);
-                    newProject.Url = p.Links["web"];
-                    newProject.AppUrl = newProject.Properties[ProjectProperties.AppUrl];
-                }
+                newProject.CostCode = newProject.Properties.ContainsKey(ProjectProperties.CostCode) ? newProject.Properties[ProjectProperties.CostCode]:null;
 
+                var p = VstsManager.GetProject(newProject.Id);
+                newProject.Url = p.Links["web"];
+                newProject.AppUrl = newProject.Properties.ContainsKey(ProjectProperties.AppUrl) ? newProject.Properties[ProjectProperties.AppUrl] : null;
                 model.Add(newProject);
             }
             return View(model);

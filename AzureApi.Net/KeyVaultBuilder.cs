@@ -32,7 +32,7 @@ namespace AzureApi.Net
 
         public static IVault CreateKeyVault(string vaultName, string resourceGroup, Region region=null, IAzure azure=null)
         {
-            if (string.IsNullOrWhiteSpace(vaultName)) vaultName = SdkContext.RandomResourceName("ACDPP-VAULT", 20);
+            if (string.IsNullOrWhiteSpace(vaultName)) vaultName = SdkContext.RandomResourceName("ACDPP-VAULT", 24);
 
             if (azure == null) azure = Core.Authenticate();
 

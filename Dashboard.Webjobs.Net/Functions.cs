@@ -125,13 +125,14 @@ namespace Dashboard.Webjobs.Net
             #region Step 7: Create the Resource Group
             var azure = Core.Authenticate();
             var groupName = "rg-acdpp-" + targetProject.Id;
-            var group = Core.GetResourceGroup(groupName, azure);
+            var groups = Core.ListResourceGroups(azure);
+            var group = groups == null ? null : groups.FirstOrDefault(g => g.Name.EqualsI(groupName));
             if (group == null) group = Core.CreateResourceGroup(groupName, azure: azure);
 
             #endregion
 
             #region Step 7: Create the Azure Key Vault
-            var vaultName = "kv-acdpp-" + targetProject.Id;
+            var vaultName = Core.GetRandomResourceName("kv-acdpp-",24);
             var vaults = KeyVaultBuilder.ListKeyVaults(group.Name, azure);
             var vault = vaults == null ? null : vaults.FirstOrDefault(v => v.Name.EqualsI(vaultName));
             if (vault == null) vault = KeyVaultBuilder.CreateKeyVault(vaultName, groupName, azure: azure);
@@ -145,13 +146,14 @@ namespace Dashboard.Webjobs.Net
             var appRegistrationName = "adap-acdpp-" + targetProject.Id;
 
             var directoryClient = AuthenticationHelper.GetActiveDirectoryClientAsApplication();
-            var appRegistration = ActiveDirectoryHelper.GetAppRegistration(appRegistrationName, directoryClient);
-            if (appRegistration==null) appRegistration = ActiveDirectoryHelper.CreateAppRegistration(appRegistrationName, appUrl, directoryClient);
+            //var appRegistration = ActiveDirectoryHelper.GetAppRegistration(appRegistrationName, directoryClient);
+            //if (appRegistration==null) appRegistration = ActiveDirectoryHelper.CreateAppRegistration(appRegistrationName, appUrl, directoryClient);
 
             //TODO
-            var vaultKey = $"{vaultName}-key";
-            var vaultClientId = Convert.ToBase64String(appRegistration.KeyCredentials.FirstOrDefault(k=>Encoding.UTF8.GetString(k.CustomKeyIdentifier) == vaultKey).Value);
-            var vaultClientSecret = "";
+            //var vaultKey = $"{vaultName}-key";
+            //var vaultClientId = Convert.ToBase64String(appRegistration.KeyCredentials.FirstOrDefault(k=>Encoding.UTF8.GetString(k.CustomKeyIdentifier) == vaultKey).Value);
+            //var vaultClientSecret = "";
+            //vaultKey = $"{vaultName}-key";
 
             #endregion
 
@@ -169,15 +171,15 @@ namespace Dashboard.Webjobs.Net
 
             string connectionString = $"Server=tcp:{serverName}.database.windows.net,1433;Initial Catalog={databaseName};Persist Security Info=False;User ID={adminUsername};Password={adminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
 
-            var vaultClient = new VaultClient(vault.VaultUri, vaultClientId,vaultClientSecret,AppSettings.AzureTenantId);
+            var vaultClient = new VaultClient(vault.VaultUri, AppSettings.VaultClientId, AppSettings.VaultClientSecret, AppSettings.AzureTenantId);
             var secretId = vaultClient.SetSecret("DefaultConnection", connectionString);
 
             #endregion
 
             #region Step 5: Copy the source build
-            parameters["VaultUrl"] = vaultUrl;
-            parameters["VaultClientId"] = vaultClientId;
-            parameters["VaultClientSecret"] = vaultClientSecret;
+            parameters["VaultUrl"] = AppSettings.VaultUrl;//vaultUrl;
+            parameters["VaultClientId"] = AppSettings.VaultClientId;//vaultClientId;
+            parameters["VaultClientSecret"] = AppSettings.VaultClientSecret;// vaultClientSecret;
             parameters["AzureTenantId"] = AppSettings.AzureTenantId;
 
             //Clone the sample build definition from the source to target project

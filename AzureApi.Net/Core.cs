@@ -6,6 +6,7 @@ using Microsoft.Azure.Management.Sql.Fluent;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Linq;
 
 namespace AzureApi.Net
 {
@@ -51,11 +52,12 @@ namespace AzureApi.Net
 
         public static IResourceGroup CreateResourceGroup(string groupName, Region region=null, IAzure azure = null)
         {
+            if (azure == null) azure = Authenticate();
 
-            var group = GetResourceGroup(groupName);
+            var groups = ListResourceGroups(azure);
+            var group = groups==null ? null : groups.FirstOrDefault(g=>g.Name.ToLower()==groupName.ToLower());
             if (group != null) return group;
 
-            if (azure == null) azure = Authenticate();
             if (region == null) region = Region.EuropeWest;
 
             group = azure.ResourceGroups.Define(groupName)
@@ -69,6 +71,11 @@ namespace AzureApi.Net
         {
             if (azure == null) azure = Authenticate();
             azure.ResourceGroups.DeleteByName(groupName);
+        }
+
+        public static string GetRandomResourceName(string name, int length=24)
+        {
+            return SdkContext.RandomResourceName(name, length);
         }
         #endregion
 

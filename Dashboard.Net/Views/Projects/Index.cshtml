@@ -17,7 +17,7 @@
                 <h1 class="heading-large">
                     Projects
                 </h1>
-                if (Model.Count(project => project.Properties[ProjectProperties.CreatedBy] == AppSettings.ProjectCreatedBy) == 0)
+                if (Model.Count(project => project.Properties.ContainsKey(ProjectProperties.CreatedBy) && project.Properties[ProjectProperties.CreatedBy] == AppSettings.ProjectCreatedBy) == 0)
                 {
                     <div>
                         No projects found
@@ -30,7 +30,7 @@
                             @for (var i = 0; i < Model.Count; i++)
                             {
                             var project = Model[i];
-                            if (project.Properties[ProjectProperties.CreatedBy] != AppSettings.ProjectCreatedBy) { continue; }
+                            if (project.Properties.ContainsKey(ProjectProperties.CreatedBy) && project.Properties[ProjectProperties.CreatedBy] != AppSettings.ProjectCreatedBy) { continue; }
                             <tr>
                                 <td>
                                     <b><a href="@Url.Action("Edit", new { id = project.Id })" title="Make changes to this project">@project.Name</a></b>
@@ -38,7 +38,7 @@
                                     @project.Description
                                 </td>
                                 <td class="numeric">
-                                    <span style="font-size:small;color:gray" title="Created">@project.Properties["Created Date"].ToDateTime().ToString("d MMM yyyy")</span>
+                                    <span style="font-size:small;color:gray" title="Created">@(project.Properties.ContainsKey(ProjectProperties.CreatedDate) ? project.Properties[ProjectProperties.CreatedDate].ToDateTime().ToString("d MMM yyyy") : null)</span>
                                     <br />
                                     <a href="@project.Url" target="_blank" title="Go to project on Visual Studio Online">Team Project</a> - 
                                     <a href="@project.AppUrl" target="_blank" title="Go to application web site">App Site</a>
@@ -54,7 +54,7 @@
                         <a href="@Url.Action("Create")" title="Create a new project" class="button">Create Project</a>
                     </div>
                 </fieldset>
-                if (Model.Count(project => project.Properties[ProjectProperties.CreatedBy] == AppSettings.ProjectCreatedBy) > 0)
+                if (Model.Count(project => project.Properties.ContainsKey(ProjectProperties.CreatedBy) && project.Properties[ProjectProperties.CreatedBy] == AppSettings.ProjectCreatedBy) > 0)
                 {
                     <h2 class="heading-medium">
                         Other Projects
@@ -63,7 +63,7 @@
                     for (var i = 0; i < Model.Count; i++)
                     {
                         var project = Model[i];
-                        if (project.Properties[ProjectProperties.CreatedBy] == AppSettings.ProjectCreatedBy) { continue; }
+                        if (project.Properties.ContainsKey(ProjectProperties.CreatedBy) && project.Properties[ProjectProperties.CreatedBy] == AppSettings.ProjectCreatedBy) { continue; }
                         <div>
                             <span title="project.i">@project.Name</span>
                         </div>
