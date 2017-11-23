@@ -1,0 +1,108 @@
+﻿@{
+    ViewData["Title"] = (Model.Id == null ? "Create Project" : "Save Project") + " - The Platform Thing";
+}
+@model Dashboard.Net.Models.ProjectViewModel
+@using Dashboard.Net.Classes;
+<main id="content" role="main">
+    <div class="grid-row">
+        <div class="column-full">
+            @using (Html.BeginForm((Model.Id == null ? "Create" : "Edit"), null, FormMethod.Post, new { autocomplete = "off" }))
+            {
+                @Html.CustomValidationSummary()
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => Model.Id)
+
+                <h1 class="heading-large">
+                    @(Model.Id == null ? "Creating Project {Model.Name}..." : $"Saving Project {Model.Name}...")
+                </h1>
+                <h2 class="heading-medium">Project Details</h2>
+                @if (Model.Id == null)
+                {
+                    <p>Your project is being created in the background. Team members will receive a welcome email when complete.</p>
+                }
+                else
+                {
+                    <p>Your changes are being saved in the background.</p>
+                }
+
+                <h2 class="heading-medium">Queued Steps</h2>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Create Visual Studio Team Services (VSTS) Team Project 
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Add team members to VSTS Team Project
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Create Git repository on VSTS 
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Clone Sample source code to new Git repository on VSTS
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Create dedicated resource group on Azure
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Add SQL Server to resource group
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    White list sample application IP address with SQL Server
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Create empty sample database on SQL Server
+                </div>
+
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Create dedicated KeyVault on Azure
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Add secret connection string of sample database to KeyVault
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Register the sample application with Active Directory for access to Azure services
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Add permission to the sample application to access Azure key vault
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Execute a build to create OpenShift environment for the sample application
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Create a build definition to deploy the sample application to the OpenShift environment
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Build the sample application from the local Git repository
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Deploy the sample application to the OpenShift environment with injected Key Vault settings
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Send welcome email to all team members containing setup details
+                </div>
+
+          <fieldset>
+                    <div class="form-group">
+                        <br>
+                        <a href="@Url.Action("Index")" class="link-button">Continue</a>
+                    </div>
+                </fieldset>
+            }
+        </div>
+    </div>
+</main>

@@ -36,9 +36,9 @@ namespace VstsApi.Net
         public static string VSTSAccountEmail = ConfigurationManager.AppSettings["VSTSAccountEmail"];
         public static string VSTSPersonalAccessToken = ConfigurationManager.AppSettings["VSTSPersonalAccessToken"];
 
-        public static string SourceInstanceUrl = $"https://{SourceAccountName}.visualstudio.com/";
-        public static string SourceProjectUrl = $"{SourceInstanceUrl}{SourceProjectName}";
-        public static string SourceCollectionUrl = $"{SourceInstanceUrl}DefaultCollection";
+        public static string SourceInstanceUrl = $"https://{SourceAccountName}.visualstudio.com";
+        public static string SourceProjectUrl = $"{SourceInstanceUrl}/{SourceProjectName}";
+        public static string SourceCollectionUrl = $"{SourceInstanceUrl}/DefaultCollection";
         public static string SourceRepoUrl = $"{SourceProjectUrl}/_git/{SourceRepoName}";
 
         public static string TargetProjectTemplateId = ConfigurationManager.AppSettings["TargetProjectTemplateId"];

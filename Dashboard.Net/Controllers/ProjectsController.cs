@@ -134,7 +134,7 @@ namespace Dashboard.Controllers
                     MvcApplication.SaveProjectQueue.Enqueue(sourceProject);
 
                     //Show success confirmation
-                    return View("CustomError",new CustomErrorViewModel {  Title="Complete", Subtitle=$"Project successfully {(command=="Save Changes" ? "saved" : "created")}", Description=$"Your {(command == "Save Changes" ? "project changes were queued for saving" : "new project was queued for creation. Welcome emails will be sent to the team members upon completion")}.",  CallToAction="View projects...", ActionText="Continue", ActionUrl=Url.Action("Index")});
+                    return View("Complete",model);
                 }
             }
             catch (Exception ex)
