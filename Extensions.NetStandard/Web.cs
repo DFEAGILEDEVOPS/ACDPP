@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.Net.Http.Headers;
 using Extensions.Net;
+using System.Threading;
 
 namespace Extensions
 {
@@ -48,22 +49,41 @@ namespace Extensions
                 else if (httpMethod.IsAny(HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch))
                     throw new ArgumentOutOfRangeException(nameof(body), "You must supply a body when Post, Put or Patch when a body is specified");
 
-
-                using (var response = (
-                    httpMethod == HttpMethods.Get ? client.GetAsync(url) :
-                    httpMethod == HttpMethods.Delete ? client.DeleteAsync(url) :
-                    httpMethod == HttpMethods.Post ? client.PostAsync(url, httpContent) :
-                    httpMethod == HttpMethods.Put ? client.PutAsync(url, httpContent):
-                    httpMethod == HttpMethods.Patch ? client.PatchAsync(url, httpContent) :
-                    throw new ArgumentOutOfRangeException(nameof(httpMethod),"HttpMethod must be Get, Delete, Post or Put")
-                    ).Result)
+                int retries = 0;
+                retry:
+                try
                 {
-                    response.EnsureSuccessStatusCode();
-                    string responseBody = await response.Content.ReadAsStringAsync();
-                    dynamic jsonResponse = JsonConvert.DeserializeObject(responseBody);
-                    return jsonResponse;
+                    using (var response = (
+                        httpMethod == HttpMethods.Get ? client.GetAsync(url) :
+                        httpMethod == HttpMethods.Delete ? client.DeleteAsync(url) :
+                        httpMethod == HttpMethods.Post ? client.PostAsync(url, httpContent) :
+                        httpMethod == HttpMethods.Put ? client.PutAsync(url, httpContent) :
+                        httpMethod == HttpMethods.Patch ? client.PatchAsync(url, httpContent) :
+                        throw new ArgumentOutOfRangeException(nameof(httpMethod), "HttpMethod must be Get, Delete, Post or Put")
+                        ).Result)
+                    {
+                        response.EnsureSuccessStatusCode();
+                        string responseBody = await response.Content.ReadAsStringAsync();
+                        dynamic jsonResponse = JsonConvert.DeserializeObject(responseBody);
+                        return jsonResponse;
+                    }
                 }
+                catch (Exception ex)
+                {
+                    var rex = ex.InnerException?.InnerException ?? ex.InnerException ?? ex;
+                    if (rex.Message.ContainsI("The remote server returned an error","503", "Server Unavailable"))
+                    {
+                        retries++;
+                        if (retries < 10)
+                        {
+                            Thread.Sleep(1000);
+                            goto retry;
+                        }
+                    }
+                }
+               
             }
+            return null;
         }
 
     }
