@@ -15,6 +15,7 @@ using Autofac;
 using AzureApi.Net;
 using System.Text;
 using AzureApi.Client.Net;
+using Microsoft.Azure.Management.KeyVault.Fluent.Models;
 
 namespace Dashboard.Webjobs.Net
 {
@@ -122,48 +123,58 @@ namespace Dashboard.Webjobs.Net
             if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build {build.Result}: '{build.Definition.Name}:{build.Id}' ");
             #endregion
 
-            #region Step 7: Create the Resource Group
-            var azure = Core.Authenticate();
-            var groupName = "rg-acdpp-" + targetProject.Id;
+            #region Step 5: Create the Resource Group (if it doesnt already exist)
+            var azure = Core.Authenticate(AppSettings.ActiveDirectoryClientId, AppSettings.ActiveDirectoryClientSecret, AppSettings.AzureTenantId, AppSettings.AzureSubscriptionId);
+            var groupName = "rg-acdpp-" + sourceProject.Id;
             var groups = Core.ListResourceGroups(azure);
             var group = groups == null ? null : groups.FirstOrDefault(g => g.Name.EqualsI(groupName));
-            if (group == null) group = Core.CreateResourceGroup(groupName, azure: azure);
+            if (group == null) group = Core.CreateResourceGroup(azure, groupName);
+            #endregion
+
+            #region Step 6: Create the Azure App Registration /Service Principle (if it doesnt already exist)
+
+            //Create the app registration (if it doesnt already exist)
+            var activeDirectoryHelper = new ActiveDirectoryHelper(AppSettings.ActiveDirectoryClientId, AppSettings.ActiveDirectoryClientSecret, AppSettings.AzureTenantId);
+            var directoryClient = activeDirectoryHelper.GetActiveDirectoryClientAsApplication();
+            var appRegistrations = activeDirectoryHelper.ListAppRegistrations(directoryClient);
+            var appRegistrationName = $"app-ACDPP-{sourceProject.Id}";
+            var appRegistration = appRegistrations?.FirstOrDefault(a => a.DisplayName.EqualsI(appRegistrationName));
+            if (appRegistration == null) appRegistration = appRegistrations?.FirstOrDefault(a => a.IdentifierUris.Any(u => u.EqualsUrl(appUrl)));
+            if (appRegistration != null) appRegistrationName = appRegistration.DisplayName;
+            if (appRegistration == null) appRegistration = activeDirectoryHelper.CreateAppRegistration(appRegistrationName, appUrl, directoryClient);
+
+            //Add access to the keyvault resources (if it doesnt already exist)
+            var resources = new Dictionary<Guid, string>();
+            resources[new Guid("f53da476-18e3-4152-8e01-aec403e6edc0")] = "Scope";
+            activeDirectoryHelper.AddApplicationResourcePermissions(appRegistration, "cfa8b339-82a2-471a-a3c9-0fc0be7a4093", resources);
+
+            //Get the credentials for authenticating the app
+            var vaultClientId = appRegistration.AppId;
+            var appKey = Encryption.EncryptData(sourceProject.Id);
+            var vaultClientSecret = activeDirectoryHelper.AddApplicationPassword(appRegistration, "DefaultKey", appKey);
 
             #endregion
 
-            #region Step 7: Create the Azure Key Vault
-            var vaultName = Core.GetRandomResourceName("kv-acdpp-",24);
-            var vaults = KeyVaultBuilder.ListKeyVaults(group.Name, azure);
-            var vault = vaults == null ? null : vaults.FirstOrDefault(v => v.Name.EqualsI(vaultName));
-            if (vault == null) vault = KeyVaultBuilder.CreateKeyVault(vaultName, groupName, azure: azure);
+            #region Step 7: Create the Azure Key Vault (if it doesnt already exist)
+            var vaultName = "kv-acdpp-" + sourceProject.Id.ReplaceI("-").Right(15);
+            var vaults = KeyVaultBuilder.ListKeyVaults(azure, group.Name);
+            var vault = vaults?.FirstOrDefault(v => v.Name.EqualsI(vaultName));
 
-            var vaultUrl = vault.VaultUri;
+            //Create the vault with permission to active directory client
+            if (vault == null) vault = KeyVaultBuilder.CreateKeyVault(azure, AppSettings.ActiveDirectoryClientId, vaultName, groupName);
 
-            #endregion
-
-            #region Step 7: Create the Azure App Registration
-
-            var appRegistrationName = "adap-acdpp-" + targetProject.Id;
-
-            var directoryClient = AuthenticationHelper.GetActiveDirectoryClientAsApplication();
-            //var appRegistration = ActiveDirectoryHelper.GetAppRegistration(appRegistrationName, directoryClient);
-            //if (appRegistration==null) appRegistration = ActiveDirectoryHelper.CreateAppRegistration(appRegistrationName, appUrl, directoryClient);
-
-            //TODO
-            //var vaultKey = $"{vaultName}-key";
-            //var vaultClientId = Convert.ToBase64String(appRegistration.KeyCredentials.FirstOrDefault(k=>Encoding.UTF8.GetString(k.CustomKeyIdentifier) == vaultKey).Value);
-            //var vaultClientSecret = "";
-            //vaultKey = $"{vaultName}-key";
+            //Add client app permission to the vault 
+            KeyVaultBuilder.AddAccessPolicy(vault, vaultClientId);
 
             #endregion
 
-            #region Step 7: Create the SQL Server and Database
+            #region Step 8: Create the SQL Server and Database
             string serverName = "sqlsrv-acdpp-"+ targetProject.Id;
             string adminUsername = $"{serverName}admin";
             string adminPassword = Crypto.GeneratePassword();
 
-            var sqlServer = SqlDatabaseBuilder.GetServer(serverName, groupName, azure);
-            if (sqlServer == null)sqlServer=SqlDatabaseBuilder.CreateSqlServer(serverName, group.Name, adminUsername, adminPassword, AppSettings.AppStartIP, AppSettings.AppEndIP);
+            var sqlServer = SqlDatabaseBuilder.GetServer(azure,serverName, groupName);
+            if (sqlServer == null)sqlServer=SqlDatabaseBuilder.CreateSqlServer(azure, serverName, group.Name, adminUsername, adminPassword, AppSettings.AppStartIP, AppSettings.AppEndIP);
             
             string databaseName = "db-acdpp-" + targetProject.Id;
             var sqlDatabase = SqlDatabaseBuilder.GetDatabase(sqlServer, databaseName);
@@ -176,10 +187,32 @@ namespace Dashboard.Webjobs.Net
 
             #endregion
 
-            #region Step 5: Copy the source build
-            parameters["VaultUrl"] = AppSettings.VaultUrl;//vaultUrl;
-            parameters["VaultClientId"] = AppSettings.VaultClientId;//vaultClientId;
-            parameters["VaultClientSecret"] = AppSettings.VaultClientSecret;// vaultClientSecret;
+            #region Step 9: Create the storage account
+            string accountName = "str-acdpp-" + targetProject.Id;
+
+            var storageAccount = StorageBuilder.GetAccount(azure, accountName, groupName);
+            if (storageAccount == null) storageAccount = StorageBuilder.CreateAccount(azure, accountName, group.Name);
+
+            connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={storageAccount.Key};EndpointSuffix=core.windows.net";
+
+            secretId = vaultClient.SetSecret("DefaultStorage", connectionString);
+            #endregion
+
+            #region Step 9: Create the Redis Cache
+            string cacheName = "rc-acdpp-" + targetProject.Id;
+
+            var cache = CacheBuilder.GetCache(azure, cacheName, groupName);
+            if (cache == null) cache = CacheBuilder.CreateCache(azure, cacheName, group.Name);
+            
+            connectionString = $"{cacheName}.redis.cache.windows.net:6380,password={cache.Key},ssl=True,abortConnect=False";
+
+            secretId = vaultClient.SetSecret("DefaultCache", connectionString);
+            #endregion
+
+            #region Step 10: Copy the source build
+            parameters["VaultUrl"] = vault.VaultUri;//vaultUrl;
+            parameters["VaultClientId"] = vaultClientId;//vaultClientId;
+            parameters["VaultClientSecret"] = vaultClientSecret;// vaultClientSecret;
             parameters["AzureTenantId"] = AppSettings.AzureTenantId;
 
             //Clone the sample build definition from the source to target project
@@ -191,7 +224,7 @@ namespace Dashboard.Webjobs.Net
             build = builds==null ? null : builds.OrderByDescending(b => b.QueueTime).FirstOrDefault();
             #endregion
 
-            #region Step 6: Build and deploy the sample application
+            #region Step 11: Build and deploy the sample application
             //Create a new build if the last failed
             if (build == null || (build.Status.EqualsI("Completed") && build.Result.EqualsI("failed"))) build = VstsManager.QueueBuild(targetProject.Id, sourceDefinition.Id.ToInt32(), jsonParameters);
 
@@ -202,7 +235,7 @@ namespace Dashboard.Webjobs.Net
             if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build {build.Result}: '{build.Definition.Name}:{build.Id}' ");
             #endregion
 
-            #region Step 8: Update the team members
+            #region Step 12: Update the team members
             var teams = VstsManager.GetTeams(sourceProject.Id);
             var team = teams[0];
             var members = VstsManager.GetMembers(sourceProject.Id, team.Id);
@@ -236,7 +269,7 @@ namespace Dashboard.Webjobs.Net
             }
             #endregion
 
-            #region Step 9: Welcome the team members
+            #region Step 11: Welcome the team members
             if (newMembers.Count > 0)
             {
                 var projectUrl = targetProject.Links["web"];

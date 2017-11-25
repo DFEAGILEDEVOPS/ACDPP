@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.Sql;
 using Microsoft.Azure.Management.Sql.Fluent;
@@ -13,47 +14,46 @@ namespace AzureApi.Net
 
     public class Core
     {
-        public static string VaultUrl = ConfigurationManager.AppSettings["VaultUrl"];
-        public static string VaultClientId = ConfigurationManager.AppSettings["VaultClientId"];
-        public static string VaultClientSecret = ConfigurationManager.AppSettings["VaultClientSecret"];
-        public static string AzureTenantId = ConfigurationManager.AppSettings["AzureTenantId"];
-        public static string AzureSubscriptionId = ConfigurationManager.AppSettings["AzureSubscriptionId"];
+        public static AzureCredentials GetCredentials(string clientId, string clientSecret, string tenantId)
+        {
+            return SdkContext.AzureCredentialsFactory.FromServicePrincipal(clientId, clientSecret, tenantId, AzureEnvironment.AzureGlobalCloud);
+        }
 
-        public static IAzure Authenticate()
+        public static IAzure Authenticate(string clientId, string clientSecret, string tenantId,string subscriptionId)
         {
             //=================================================================
             // Authenticate
-            var credentials = SdkContext.AzureCredentialsFactory.FromServicePrincipal(VaultClientId,VaultClientSecret, AzureTenantId, AzureEnvironment.AzureGlobalCloud);
+            var credentials = GetCredentials(clientId, clientSecret, tenantId);
 
+            return Authenticate(credentials, subscriptionId);
+        }
+
+        public static IAzure Authenticate(AzureCredentials credentials, string subscriptionId)
+        {
             var azure = Azure
                 .Configure()
                 .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
                 .Authenticate(credentials)
-                .WithSubscription(AzureSubscriptionId);
+                .WithSubscription(subscriptionId);
             return azure;
         }
 
 
-
         #region Resource Group
-        public static IResourceGroup GetResourceGroup(string groupName, IAzure azure = null)
+        public static IResourceGroup GetResourceGroup(IAzure azure, string groupName)
         {
-            if (azure == null) azure = Authenticate();
             var group = azure.ResourceGroups.GetByName(groupName);
             return group;
         }
 
-        public static IEnumerable<IResourceGroup> ListResourceGroups(IAzure azure = null)
+        public static IEnumerable<IResourceGroup> ListResourceGroups(IAzure azure)
         {
-            if (azure == null) azure = Authenticate();
             var groups = azure.ResourceGroups.List();
             return groups;
         }
 
-        public static IResourceGroup CreateResourceGroup(string groupName, Region region=null, IAzure azure = null)
+        public static IResourceGroup CreateResourceGroup(IAzure azure, string groupName, Region region=null)
         {
-            if (azure == null) azure = Authenticate();
-
             var groups = ListResourceGroups(azure);
             var group = groups==null ? null : groups.FirstOrDefault(g=>g.Name.ToLower()==groupName.ToLower());
             if (group != null) return group;
@@ -67,9 +67,8 @@ namespace AzureApi.Net
             return group;
         }
 
-        public static void DeleteResourceGroup(string groupName, IAzure azure = null)
+        public static void DeleteResourceGroup(IAzure azure, string groupName)
         {
-            if (azure == null) azure = Authenticate();
             azure.ResourceGroups.DeleteByName(groupName);
         }
 

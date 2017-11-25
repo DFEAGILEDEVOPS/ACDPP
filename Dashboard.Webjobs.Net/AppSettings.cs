@@ -6,11 +6,17 @@ namespace Dashboard.Webjobs.Net
 {
     internal class AppSettings
     {
+        public static string AzureTenantId = ConfigurationManager.AppSettings["AzureTenantId"];
+        public static string AzureSubscriptionId = ConfigurationManager.AppSettings["AzureSubscriptionId"];
+
+        public static string ActiveDirectoryClientId = ConfigurationManager.AppSettings["ActiveDirectoryClientId"];
+        public static string ActiveDirectoryClientSecret = ConfigurationManager.AppSettings["ActiveDirectoryClientSecret"];
+
         public static string VaultUrl = ConfigurationManager.AppSettings["VaultUrl"];
         public static string VaultClientId = ConfigurationManager.AppSettings["VaultClientId"];
         public static string VaultClientSecret = ConfigurationManager.AppSettings["VaultClientSecret"];
 
-        public static string AzureTenantId = ConfigurationManager.AppSettings["AzureTenantId"];
+        
         public static string AzureResourceGroup = ConfigurationManager.AppSettings["AzureResourceGroup"];
         public static string AppStartIP = ConfigurationManager.AppSettings["AppStartIP"];
         public static string AppEndIP = ConfigurationManager.AppSettings["AppEndIP"];

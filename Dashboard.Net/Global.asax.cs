@@ -34,25 +34,6 @@ namespace Dashboard.Net
 
         protected void Application_Start()
         {
-            //string serverName= "sqlsrv-t1te-acdpp";
-            //string adminUsername = $"{serverName}admin";
-            //string adminPassword = Crypto.GeneratePassword();
-
-            //serverName = AzureApi.Net.SqlDatabaseBuilder.CreateSqlServer(serverName, AppSettings.AzureResourceGroup, adminUsername, adminPassword, AppSettings.AppStartIP, AppSettings.AppEndIP);
-
-            //string databaseName = "db-t1te-acdpp";
-            //databaseName = AzureApi.Net.SqlDatabaseBuilder.CreateSqlDatabase(AppSettings.AzureResourceGroup, serverName, databaseName);
-
-            //string connectionString = $"Server=tcp:{serverName}.database.windows.net,1433;Initial Catalog={databaseName};Persist Security Info=False;User ID={adminUsername};Password={adminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
-
-            //var secretKey = $"{databaseName}-ConnectionString";
-
-            //var secretId =VaultClient.SetSecret(secretKey, connectionString);
-            //var secret = VaultClient.GetSecret(secretKey);
-
-            //Debugger.Break();
-
-
             AreaRegistration.RegisterAllAreas();
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);

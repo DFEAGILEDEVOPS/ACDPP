@@ -12,25 +12,21 @@ namespace AzureApi.Net
     public class SqlDatabaseBuilder
     {
         #region Sql Server
-        public static ISqlServer GetServer(string serverName, string resourceGroup, IAzure azure = null)
+        public static ISqlServer GetServer(IAzure azure, string serverName, string resourceGroup)
         {
-            if (azure == null) azure = Core.Authenticate();
             var server = azure.SqlServers.GetByResourceGroup(resourceGroup, serverName);
             return server;
         }
 
-        public static IEnumerable<ISqlServer> ListServers(string resourceGroup, IAzure azure = null)
+        public static IEnumerable<ISqlServer> ListServers(IAzure azure, string resourceGroup)
         {
-            if (azure == null) azure = Core.Authenticate();
             var servers = azure.SqlServers.ListByResourceGroup(resourceGroup);
             return servers;
         }
 
-        public static ISqlServer CreateServer(string serverName, string resourceGroup, string adminUsername, string adminPassword, Region region=null, IAzure azure=null)
+        public static ISqlServer CreateServer(IAzure azure, string serverName, string resourceGroup, string adminUsername, string adminPassword, Region region=null)
         {
-            if (azure == null) azure = Core.Authenticate();
-
-            if (region == null) region = Core.GetResourceGroup(resourceGroup,azure)?.Region;
+            if (region == null) region = Core.GetResourceGroup(azure,resourceGroup)?.Region;
 
             var sqlServer = azure.SqlServers.Define(serverName)
                 .WithRegion(region)
@@ -41,15 +37,13 @@ namespace AzureApi.Net
             return sqlServer;
         }
 
-        public static void DeleteServer(string serverName, string resourceGroup, IAzure azure = null)
+        public static void DeleteServer(IAzure azure, string serverName, string resourceGroup)
         {
-            if (azure == null) azure = Core.Authenticate();
             azure.SqlServers.DeleteByResourceGroup(resourceGroup, serverName);
         }
 
-        public static void DeleteServer(ISqlServer server, IAzure azure = null)
+        public static void DeleteServer(IAzure azure, ISqlServer server)
         {
-            if (azure == null) azure = Core.Authenticate();
             azure.SqlServers.DeleteById(server.Id);
         }
         #endregion
@@ -114,10 +108,10 @@ namespace AzureApi.Net
         }
         #endregion
 
-        public static ISqlServer CreateSqlServer(string serverName, string resourceGroup, string adminUsername, string adminPassword, string startIP, string endIP)
+        public static ISqlServer CreateSqlServer(IAzure azure, string serverName, string resourceGroup, string adminUsername, string adminPassword, string startIP, string endIP)
         {
             //Create the server if it doesnt already exist
-            var server = CreateServer(serverName,resourceGroup,adminUsername,adminPassword);
+            var server = CreateServer(azure,serverName,resourceGroup,adminUsername,adminPassword);
 
             //Create the firewall rule if it doesnt already exist
             var ruleName = string.IsNullOrWhiteSpace(endIP) || startIP==endIP ? $"{startIP.Replace(".", "_")}" : $"{startIP.Replace(".","_")}-{endIP.Replace(".", "_")}";
@@ -128,10 +122,10 @@ namespace AzureApi.Net
             return server;
         }
 
-        public static ISqlDatabase CreateSqlDatabase(string resourceGroup, string serverName, string databaseName)
+        public static ISqlDatabase CreateSqlDatabase(IAzure azure, string resourceGroup, string serverName, string databaseName)
         {
             //Create the server if it doesnt already exist
-            var server = GetServer(serverName, resourceGroup);
+            var server = GetServer(azure, serverName, resourceGroup);
             if (server == null) throw new ArgumentException($"Cannot find server '{serverName}' in resource group '{resourceGroup}'", nameof(serverName));
 
             //Create the database if it doesnt already exist

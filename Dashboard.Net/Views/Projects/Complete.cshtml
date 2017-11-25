@@ -28,15 +28,16 @@
                 <h2 class="heading-medium">Steps</h2>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Create Visual Studio Team Services (VSTS) Team Project for source control, Agile backlogs, and Continuous Integration.
+                    Create a dedicated team project on Visual Studio Team Services (VSTS)<br />
+                    for source control, Agile backlogs, and Continuous Integration.
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Add team members to Team Project
+                    Add team members to VSTS team project
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Create private Git repository on VSTS for control of source code for this project
+                    Create private Git repository on VSTS for source control
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
@@ -44,11 +45,20 @@
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Create a dedicated resource group for this projects resources on Azure
+                    Create a dedicated Resource Group for this project on Azure
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Add an SQL Server with strong credentials to this projects resource group 
+                    Create a dedicated shared storage in the Azure Resource Group
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Create a dedicated shared cache in the Azure Resource Group
+                </div>
+
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Add an SQL Server with strong credentials to the Azure Resource Group 
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
@@ -65,23 +75,27 @@
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Add secret connection string of sample database to projects key vault
+                    Add connection secrets for sample database to Azure Key Vault
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Register the sample application with Active Directory for access to Azure services
+                    Create an service principle for access to Azure resources
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Add permission for the sample application to access the projects key vault on Azure
+                    Add permission for the sample application to access the Azure Key Vault
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Execute a build to create an OpenShift environment for the sample application
+                    Create the development, test and production environments on OpenShift<br />
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Create a build definition to deploy the sample application to the OpenShift environment
+                    Passing the secrets for Azure Key Vault, Database, Storage and cache access to OpenShift environments.
+                </div>
+                <div>
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
+                    Create a build definition for deploying the sample application to the OpenShift environment
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
@@ -89,11 +103,11 @@
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Deploy the sample application to the OpenShift environment with injected settings for projects key vault
+                    Deploy the sample application to the OpenShift environment
                 </div>
                 <div>
                     <span class="glyphicon glyphicon-check" aria-hidden="true"></span>
-                    Send welcome email to all team members containing project details and links
+                    Send welcome email to all team members containing quickstart links and details
                 </div>
 
           <fieldset>
