@@ -23,6 +23,7 @@ using System.Threading;
 using System.Net.Http;
 using Microsoft.TeamFoundation.Build.WebApi;
 using VstsApi.Net.Classes;
+using Newtonsoft.Json;
 
 namespace VstsApi.Net
 {
@@ -191,7 +192,7 @@ namespace VstsApi.Net
             }
         }
 
-        public static Definition CloneDefinition(string sourceProjectName, string sourceBuildName, string targetProjectName, Repo repo, Dictionary<string,string> variables=null, bool overwrite=false)
+        public static Definition CloneDefinition(string sourceProjectName, string sourceBuildName, string targetProjectName, Repo repo, Dictionary<string, string> variables = null, Dictionary<string,string> secrets=null, bool overwrite=false)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
@@ -224,7 +225,7 @@ namespace VstsApi.Net
                 sourceBuild.Project = null;
 
                 //Check the repo service endpoint is available
-                var connectedServiceId = sourceBuild.Repository.Properties["connectedServiceId"];
+                var connectedServiceId = sourceBuild.Repository.Properties.ContainsKey("connectedServiceId") ? sourceBuild.Repository.Properties["connectedServiceId"] : null;
                 Endpoint sourceEndpoint = null;
                 Endpoint targetEndpoint = null;
                 if (!string.IsNullOrWhiteSpace(connectedServiceId))
@@ -263,7 +264,16 @@ namespace VstsApi.Net
 
                 if (variables != null)
                     foreach (var key in variables.Keys)
+                    {
                         sourceBuild.Variables[key].Value = variables[key];
+                    }
+
+                if (secrets != null)
+                    foreach (var key in secrets.Keys)
+                    {
+                        sourceBuild.Variables[key].Value = secrets[key];
+                        sourceBuild.Variables[key].IsSecret = true;
+                    }
 
                 sourceBuild.VariableGroups.Clear();
                 var targetBuild =buildClient.CreateDefinitionAsync(sourceBuild, targetProject.Id);
@@ -335,7 +345,7 @@ namespace VstsApi.Net
             return results;
         }
 
-        public static List<Build> GetBuilds(string project, string build)
+        public static List<Build> GetBuilds(string project, string build, Dictionary<string,string> parameters=null)
         {
             var definitionId=build.IsInteger() ? build : GetDefinitions(project,build).FirstOrDefault()?.Id;
             var apiVersion = "2.0";
@@ -364,6 +374,19 @@ namespace VstsApi.Net
                     Result = (string)item.result,
                     Reason = (string)item.reason,
                 });
+            }
+            if (parameters!=null && parameters.Count > 0)
+            {
+                for (var i = results.Count - 1; i >= 0; i--)
+                {
+                    var item = results[i];
+                    if (!string.IsNullOrWhiteSpace(item.Parameters))
+                    {
+                        var pars = JsonConvert.DeserializeObject<Dictionary<string, string>>(item.Parameters);
+                        if (pars.SequenceEqual(parameters)) continue;
+                    }
+                    results.RemoveAt(i);
+                }
             }
             return results;
         }
@@ -396,7 +419,7 @@ namespace VstsApi.Net
             return result;
         }
 
-        public static Build QueueBuild(string project, int definitionId, string parameters = null, string branch = null)
+        public static Build QueueBuild(string project, int definitionId, Dictionary<string,string> parameters = null, string branch = null)
         {
             var apiVersion = "2.0";
 
@@ -405,12 +428,12 @@ namespace VstsApi.Net
             else if (!branch.ContainsI("/"))
                 branch = $"refs/heads/{branch}";
 
-             var body = new
+            var body = new
             {
                 definition = new { id = definitionId },
                 sourceBranch = branch,
-                parameters = parameters
-            };
+                parameters = parameters == null || parameters.Count == 0 ? null : JsonConvert.SerializeObject(parameters)
+             };
 
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{project}/_apis/build/builds?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
 
@@ -438,13 +461,17 @@ namespace VstsApi.Net
             return result;
         }
 
-        public static Build WaitForBuild(string project,Build build, int timeoutSeconds=120)
+        public static Build WaitForBuild(string project,Build build, int timeoutSeconds=120, bool throwOnTimeout=true)
         {
             DateTime expiration = DateTime.Now.AddSeconds(timeoutSeconds);
             while (!build.Status.EqualsI("Completed"))
             {
-                if (DateTime.Now > expiration) throw new Exception($"Build '{build.Definition.Name}:{build.Id}' did not complete in {timeoutSeconds} seconds. Please try again.");
-                Thread.Sleep(intervalInSec * 1000);
+                if (DateTime.Now > expiration)
+                {
+                    if (!throwOnTimeout) return build;
+                    throw new Exception($"Build '{build.Definition.Name}:{build.Id}' did not complete in {timeoutSeconds} seconds. Please try again.");
+                }
+                Thread.Sleep(intervalInSec * 2000);
                 build = GetBuild(project,build.Id.ToInt32());
             }
             return build;
@@ -651,6 +678,8 @@ namespace VstsApi.Net
         public static Project GetProject(string projectId)
         {
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/_apis/projects/{projectId}?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
+            if (string.IsNullOrWhiteSpace(json)) return null;
+
             var result=new Project()
             {
                 Id = (string)json.id,
@@ -814,7 +843,7 @@ namespace VstsApi.Net
                     value=properties[key]
                 });
             }
-            Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Patch, $"{SourceInstanceUrl}/_apis/projects/{projectId}/properties?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body));
+            var result=Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Patch, $"{SourceInstanceUrl}/_apis/projects/{projectId}/properties?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
         }
 
         public static string DeleteProjectProperties(string projectId, params string[] keys)
@@ -960,7 +989,7 @@ namespace VstsApi.Net
                 }
             };
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{projectId}/_apis/git/repositories/{repoId}/importRequests?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
-            return json.importRequestId;
+            return json?.importRequestId;
         }
         #endregion
 

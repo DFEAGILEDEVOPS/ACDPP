@@ -36,7 +36,6 @@ namespace Dashboard.Controllers
                 if (!project.State.EqualsI("WellFormed","CreatePending","New")) continue;
                 var newProject = new ProjectViewModel();
                 newProject.Properties = VstsManager.GetProjectProperties(project.Id, ProjectProperties.All);
-                if (!newProject.Properties.ContainsKey(ProjectProperties.CreatedBy) || newProject.Properties[ProjectProperties.CreatedBy] != AppSettings.ProjectCreatedBy) continue;
 
                 newProject.Id = project.Id;
                 newProject.Name = project.Name;
@@ -106,7 +105,10 @@ namespace Dashboard.Controllers
                     var sourceProject = allProjects.FirstOrDefault(p => p.Id==model.Id);
 
                     //Ensure the old project has finished being created
-                    if (sourceProject != null && !sourceProject.State.EqualsI("WellFormed")) throw new Exception("Project has not yet completed creation. Please try again later.");
+                    if (sourceProject == null)
+                        sourceProject = new Project();
+                    else if (!sourceProject.State.EqualsI("WellFormed"))
+                        throw new Exception("Project has not yet completed creation. Please try again later.");
 
                     //Check the project name is free
                     var targetProject = allProjects.FirstOrDefault(p => p.Name.EqualsI(model.Name));
@@ -120,6 +122,9 @@ namespace Dashboard.Controllers
 
                     //Queue the saved changes
                     sourceProject.Name = model.Name;
+                    if (sourceProject.Properties == null) sourceProject.Properties = new Dictionary<string, string>();
+                    sourceProject.CostCode = model.CostCode;
+                    sourceProject.Description = model.Description;
                     sourceProject.Members = new List<Member>();
                     foreach (var member in model.TeamMembers)
                     {

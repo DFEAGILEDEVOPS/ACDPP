@@ -13,6 +13,6 @@ namespace VstsApi.Net.Classes
         public string DefaultTeamId { get; set; }
         public Dictionary<string,string> Properties { get; set; }
         public List<Member> Members { get; set; }
-
+        public string CostCode { get; set; }
     }
 }

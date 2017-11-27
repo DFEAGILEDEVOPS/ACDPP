@@ -3,10 +3,9 @@ using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.Sql;
 using Microsoft.Azure.Management.Sql.Fluent;
-using Microsoft.Azure.Management.Cache.Fluent;
+using Microsoft.Azure.Management.Redis.Fluent;
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Management.Redis.Fluent;
 
 namespace AzureApi.Net
 {

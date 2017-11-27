@@ -30,7 +30,7 @@
                             @for (var i = 0; i < Model.Count; i++)
                             {
                             var project = Model[i];
-                            if (project.Properties.ContainsKey(ProjectProperties.CreatedBy) && project.Properties[ProjectProperties.CreatedBy] != AppSettings.ProjectCreatedBy) { continue; }
+                            if (!project.Properties.ContainsKey(ProjectProperties.CreatedBy) || project.Properties[ProjectProperties.CreatedBy] != AppSettings.ProjectCreatedBy) { continue; }
                             <tr>
                                 <td>
                                     <b><a href="@Url.Action("Edit", new { id = project.Id })" title="Make changes to this project">@project.Name</a></b>

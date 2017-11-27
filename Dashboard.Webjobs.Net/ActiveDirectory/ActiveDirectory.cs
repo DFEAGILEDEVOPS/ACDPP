@@ -115,7 +115,9 @@ namespace AzureApi.Net
 
             do
             {
-                if (appRegistrations != null && appRegistrations.CurrentPage != null && appRegistrations.CurrentPage.Count > 0)
+                if (appRegistrations == null) break;
+
+                if (appRegistrations.CurrentPage != null && appRegistrations.CurrentPage.Count > 0)
                     results.AddRange(appRegistrations.CurrentPage);
 
                 if (!appRegistrations.MorePagesAvailable) break;
@@ -147,6 +149,28 @@ namespace AzureApi.Net
             };
             activeDirectoryClient.ServicePrincipals.AddServicePrincipalAsync(newServicePrincipal).Wait();
             return application;
+        }
+
+        public IEnumerable<IServicePrincipal> GetServicePrinciples(ActiveDirectoryClient activeDirectoryClient)
+        {
+            var servicePrinciples = activeDirectoryClient.ServicePrincipals.Take(100).ExecuteAsync().Result;
+
+            var results = new List<IServicePrincipal>();
+
+            do
+            {
+                if (servicePrinciples == null) break;
+
+                if (servicePrinciples.CurrentPage != null && servicePrinciples.CurrentPage.Count > 0)
+                    results.AddRange(servicePrinciples.CurrentPage);
+
+                if (!servicePrinciples.MorePagesAvailable) break;
+
+                servicePrinciples = servicePrinciples.GetNextPageAsync().Result;
+            }
+            while (true);
+
+            return results;
         }
 
         public void DeleteAppRegistration(IApplication application)

@@ -25,10 +25,14 @@ namespace Dashboard.Webjobs.Net
         public static string SourceProjectName = ConfigurationManager.AppSettings["SourceProjectName"];
         public static string SourceRepoName = ConfigurationManager.AppSettings["SourceRepoName"];
         public static string SourceBuildName = ConfigurationManager.AppSettings["SourceBuildName"];
+        public static string SourceReleaseName = ConfigurationManager.AppSettings["SourceReleaseName"];
         public static string ConfigBuildName = ConfigurationManager.AppSettings["ConfigBuildName"];
+        public static string KillBuildName = ConfigurationManager.AppSettings["KillBuildName"];
 
         public static string VSTSAccountEmail = ConfigurationManager.AppSettings["VSTSAccountEmail"];
         public static string VSTSPersonalAccessToken = ConfigurationManager.AppSettings["VSTSPersonalAccessToken"];
+
+        public static string OpenShiftToken = ConfigurationManager.AppSettings["OpenShiftToken"];
 
         public static string SourceInstanceUrl = $"https://{SourceAccountName}.visualstudio.com/";
         public static string SourceProjectUrl = $"{SourceInstanceUrl}{SourceProjectName}";
@@ -44,6 +48,7 @@ namespace Dashboard.Webjobs.Net
         public static string GovNotifyApiTestKey = ConfigurationManager.AppSettings["GovNotifyApiTestKey"];
         public static string WelcomeTemplateId = ConfigurationManager.AppSettings["WelcomeTemplateId"];
         public static string ErrorTemplateId = ConfigurationManager.AppSettings["ErrorTemplateId"];
+        public static string ErrorRecipients = ConfigurationManager.AppSettings["ErrorRecipients"];
 
         public static string AzureStorageConnectionString = ConfigurationManager.AppSettings["AzureStorageConnectionString"];
 

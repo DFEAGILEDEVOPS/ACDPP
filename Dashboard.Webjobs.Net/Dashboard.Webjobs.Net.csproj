@@ -113,6 +113,9 @@
   <ItemGroup>
     <Compile Include="ActiveDirectory\ActiveDirectory.cs" />
     <Compile Include="AppSettings.cs" />
+    <Compile Include="Models\CreateSqlModel.cs" />
+    <Compile Include="Models\CreateStorageModel.cs" />
+    <Compile Include="Models\CreateCacheModel.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Functions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

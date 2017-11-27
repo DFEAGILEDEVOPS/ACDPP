@@ -101,7 +101,7 @@
     <Compile Include="Classes\Queue.cs" />
     <Compile Include="Classes\QueuePool.cs" />
     <Compile Include="Classes\Repo.cs" />
-    <Compile Include="Classes\Team.cs" />
+    <Compile Include="Models\Team.cs" />
     <Compile Include="Classes\ProjectProperties.cs" />
     <Compile Include="Classes\RoleTypes.cs" />
     <Compile Include="Classes\StateFilters.cs" />
