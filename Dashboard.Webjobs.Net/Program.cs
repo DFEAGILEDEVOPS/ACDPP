@@ -40,14 +40,17 @@ namespace Dashboard.Webjobs.Net
             Thread.CurrentThread.CurrentCulture = new CultureInfo(ConfigurationManager.AppSettings["Culture"].ToStringOr("en-GB"));
             Thread.CurrentThread.CurrentUICulture = Thread.CurrentThread.CurrentCulture;
 
+            Environment.SetEnvironmentVariable("AzureWebJobsEnv", "production");
+
             Config = new JobHostConfiguration();
             if (Config.IsDevelopment)
             {
                 Config.UseDevelopmentSettings();
-                foreach (var key in ConfigurationManager.AppSettings.AllKeys)
-                {
-                    Console.WriteLine($@"APPSETTING[""{key}""]={ConfigurationManager.AppSettings[key]}");
-                }
+            }
+
+            foreach (var key in ConfigurationManager.AppSettings.AllKeys)
+            {
+                Console.WriteLine($@"APPSETTING[""{key}""]={ConfigurationManager.AppSettings[key]}");
             }
 
             Config.UseCore();

@@ -17,6 +17,7 @@ using System.Text;
 using AzureApi.Client.Net;
 using Microsoft.Azure.Management.KeyVault.Fluent.Models;
 using Microsoft.Azure.ActiveDirectory.GraphClient;
+using System.Web;
 
 namespace Dashboard.Webjobs.Net
 {
@@ -109,7 +110,7 @@ namespace Dashboard.Webjobs.Net
                         VstsManager.AssignLicenceToIdentity(identity.Id, member.LicenceType);
 
                     //Ensure the user is a member of the team
-                    if (!members.Any(m => m.EmailAddress.EqualsI(member.EmailAddress, AppSettings.VSTSAccountEmail)))
+                    if (!members.Any(m => m.EmailAddress.EqualsI(member.EmailAddress)))
                         VstsManager.AddUserToTeam(member.EmailAddress, team.Id);
                 }
 
@@ -315,6 +316,8 @@ namespace Dashboard.Webjobs.Net
                 #endregion
 
                 #region Step 11: Build and deploy the sample application
+                var builds = VstsManager.GetBuilds(sourceProject.Id, sourceDefinition.Name);
+                build = builds?.OrderByDescending(b => b.QueueTime)?.FirstOrDefault();
                 //Create a new build if the last failed
                 if (build == null || (build.Status.EqualsI("Completed") && build.Result.EqualsI("failed"))) build = VstsManager.QueueBuild(sourceProject.Id, sourceDefinition.Id.ToInt32());
 
@@ -329,14 +332,17 @@ namespace Dashboard.Webjobs.Net
                 #endregion
 
                 #region Step 11: Welcome the team members
-                if (newMembers.Count > 0)
+                //if (newMembers.Count > 0)
                 {
-                    var projectUrl = sourceProject.Links["web"];
+                    var project = VstsManager.GetProject(sourceProject.Id);
+                    var projectUrl = project.Links["web"].ReplaceI(" ", "%20");
                     var gitUrl = repo.RemoteUrl;
 
                     var notify = new GovNotifyAPI(AppSettings.GovNotifyClientRef, AppSettings.GovNotifyApiKey, AppSettings.GovNotifyApiTestKey);
-                    foreach (var member in newMembers)
-                    {
+                    foreach (var member in sourceProject.Members)
+                    //foreach (var member in newMembers)
+                        {
+                        if (member.EmailAddress.EqualsI(AppSettings.VSTSAccountEmail)) continue;
                         var personalisation = new Dictionary<string, dynamic> { { "name", member.DisplayName }, { "email", member.EmailAddress }, { "project", sourceProject.Name }, { "projecturl", projectUrl }, { "giturl", gitUrl }, { "appurl", appUrl } };
                         notify.SendEmail(member.EmailAddress, AppSettings.WelcomeTemplateId, personalisation);
                     }
@@ -355,6 +361,72 @@ namespace Dashboard.Webjobs.Net
         {
             var sourceProject = JsonConvert.DeserializeObject<Project>(queueMessage);
 
+            var parameters = new Dictionary<string, string>();
+            parameters["oc_project_name"] = sourceProject.Name.ToLower().ReplaceI("_", "-").ReplaceI(" ");
+            parameters["oc_build_config_name"] = $"webbapp";
+            var appUrl = $"https://{parameters["oc_build_config_name"]}-{parameters["oc_project_name"]}.demo.dfe.secnix.co.uk/";
+
+            var azure = Core.Authenticate(AppSettings.ActiveDirectoryClientId, AppSettings.ActiveDirectoryClientSecret, AppSettings.AzureTenantId, AppSettings.AzureSubscriptionId);
+
+            //Delete the app
+            var allProjects = VstsManager.GetProjects();
+            var adminProject = allProjects.FirstOrDefault(p => p.Name.EqualsI(AppSettings.SourceProjectName));
+
+            var definitions = VstsManager.GetDefinitions(adminProject.Id, AppSettings.KillBuildName);
+            if (definitions == null) throw new Exception($"Cannot find build definition {AppSettings.KillBuildName} in project {AppSettings.SourceProjectName}");
+            var sourceDefinition = definitions.FirstOrDefault(d => d.Name.EqualsI(AppSettings.KillBuildName));
+            if (sourceDefinition == null) throw new Exception($"Cannot find build definition {AppSettings.KillBuildName} in project {AppSettings.SourceProjectName}");
+
+            //Create a new build if the last failed
+            var build = VstsManager.QueueBuild(adminProject.Id, sourceDefinition.Id.ToInt32(), parameters);
+
+            //Wait for the build to finish
+            if (!build.Status.EqualsI("Completed")) build = VstsManager.WaitForBuild(adminProject.Id, build, 300, false);
+            if (build.Status.EqualsI("inProgress")) build = VstsManager.WaitForBuild(sourceProject.Id, build, 300, false);
+
+            //Ensure the build succeeded
+            if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build {build.Result}: '{build.Definition.Name}:{build.Id}' ");
+
+            //Get the resource group
+            var groupName = "rg-acdpp-" + sourceProject.Id;
+            var groups = Core.ListResourceGroups(azure);
+            var group = groups == null ? null : groups.FirstOrDefault(g => g.Name.EqualsI(groupName));
+
+            //Delete the storage
+            string accountName = "stracdpp" + sourceProject.Id.ReplaceI("-").Right(16);
+            var storageAccount = StorageBuilder.GetAccount(azure, accountName, group.Name);
+            if (storageAccount!=null)azure.StorageAccounts.DeleteById(storageAccount.Id);
+
+
+            //Delete the key vault
+            var vaultName = "kv-acdpp-" + sourceProject.Id.ReplaceI("-").Right(15);
+            var vaults = KeyVaultBuilder.ListKeyVaults(azure, group.Name);
+            var vault = vaults?.FirstOrDefault(v => v.Name.EqualsI(vaultName));
+            if (vault != null) azure.Vaults.DeleteById(vault.Id);
+
+            //Delete the SQL server
+            string serverName = "sqlsrv-acdpp-" + sourceProject.Id;
+            var sqlServer = SqlDatabaseBuilder.GetServer(azure, serverName, group.Name);
+            azure.SqlServers.DeleteById(sqlServer.Id);
+
+            //Delete the cache
+            string cacheName = "rc-acdpp-" + sourceProject.Id;
+            var cache = CacheBuilder.GetCache(azure, cacheName, group.Name);
+            if (cache != null) azure.RedisCaches.DeleteById(cache.Id);
+
+            //Delete the app registration 
+            var activeDirectoryHelper = new ActiveDirectoryHelper(AppSettings.ActiveDirectoryClientId, AppSettings.ActiveDirectoryClientSecret, AppSettings.AzureTenantId);
+            var directoryClient = activeDirectoryHelper.GetActiveDirectoryClientAsApplication();
+            var appRegistrations = activeDirectoryHelper.ListAppRegistrations(directoryClient);
+            var appRegistrationName = $"app-ACDPP-{sourceProject.Id}";
+            var appRegistration = appRegistrations?.FirstOrDefault(a => a.DisplayName.EqualsI(appRegistrationName));
+            if (appRegistration == null) appRegistration = appRegistrations?.FirstOrDefault(a => a.IdentifierUris.Any(u => u.EqualsUrl(appUrl)));
+            if (appRegistration != null) activeDirectoryHelper.DeleteAppRegistration(appRegistration);
+
+            //Delete the resource group
+            if (group != null) azure.ResourceGroups.DeleteByName(group.Name);
+
+            //Delete the VSTS project
             VstsManager.DeleteProject(sourceProject.Id);
 
             log.WriteLine($"Executed {nameof(DeleteProject)}:{sourceProject.Name} successfully");
@@ -405,7 +477,8 @@ namespace Dashboard.Webjobs.Net
 
             string serverName = "sqlsrv-acdpp-" + model.SourceProjectId;
             string adminUsername = $"{serverName}admin";
-            string adminPassword = Encryption.EncryptData(serverName);
+            string adminPassword = Encryption.EncryptData(model.SourceProjectId);
+            adminPassword = adminPassword.Strip(@" /-=+\");
 
             var sqlServer = SqlDatabaseBuilder.GetServer(azure, serverName, model.GroupName);
             if (sqlServer == null) sqlServer = SqlDatabaseBuilder.CreateSqlServer(azure, serverName, model.GroupName, adminUsername, adminPassword, AppSettings.AppStartIP, AppSettings.AppEndIP);

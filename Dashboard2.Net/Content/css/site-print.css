@@ -1,0 +1,4 @@
+﻿/* This stylesheet is only used for printing the page */
+.print-page {
+    display: none;
+}

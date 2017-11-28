@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2009
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard.Net", "Dashboard.Net\Dashboard.Net.csproj", "{3B45260F-ED17-4EA5-BB0F-43461C3E23DD}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VstsApi.Net", "VstsManager.Net\VstsApi.Net.csproj", "{6EABF9CC-B87D-43C5-A67E-99DBB89679CB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard.Webjobs.Net", "Dashboard.Webjobs.Net\Dashboard.Webjobs.Net.csproj", "{B85FECE5-0B33-4871-B714-88D43CE48A57}"
@@ -13,11 +11,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureApi.Net", "AzureApi.Ne
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureApi.Client.Net", "AzureApi.Client.Net\AzureApi.Client.Net.csproj", "{35CCC32B-B2A1-4222-8303-CF0E00C01454}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard.NetStandard.Core", "Dashboard.Core\Dashboard.NetStandard.Core.csproj", "{F024A90C-CD9E-4317-96B8-D8CEC1B8C6DC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dashboard.NetStandard.Core", "Dashboard.Core\Dashboard.NetStandard.Core.csproj", "{F024A90C-CD9E-4317-96B8-D8CEC1B8C6DC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions.NetStandard", "Extensions.NetStandard\Extensions.NetStandard.csproj", "{E547A169-4B48-40CC-9FDB-2D97F1BE5FE7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Extensions.NetStandard", "Extensions.NetStandard\Extensions.NetStandard.csproj", "{E547A169-4B48-40CC-9FDB-2D97F1BE5FE7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notify.NetStandard", "Notify.NetStandard\Notify.NetStandard.csproj", "{C1881792-2ED7-4A8C-82EB-A34BDB8D636D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notify.NetStandard", "Notify.NetStandard\Notify.NetStandard.csproj", "{C1881792-2ED7-4A8C-82EB-A34BDB8D636D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard2.Net", "Dashboard2.Net\Dashboard2.Net.csproj", "{F4043F1F-5AFC-4722-8D1F-08E8E4034257}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,10 +25,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{3B45260F-ED17-4EA5-BB0F-43461C3E23DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3B45260F-ED17-4EA5-BB0F-43461C3E23DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3B45260F-ED17-4EA5-BB0F-43461C3E23DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3B45260F-ED17-4EA5-BB0F-43461C3E23DD}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6EABF9CC-B87D-43C5-A67E-99DBB89679CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6EABF9CC-B87D-43C5-A67E-99DBB89679CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6EABF9CC-B87D-43C5-A67E-99DBB89679CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -57,6 +53,10 @@ Global
 		{C1881792-2ED7-4A8C-82EB-A34BDB8D636D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C1881792-2ED7-4A8C-82EB-A34BDB8D636D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C1881792-2ED7-4A8C-82EB-A34BDB8D636D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F4043F1F-5AFC-4722-8D1F-08E8E4034257}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4043F1F-5AFC-4722-8D1F-08E8E4034257}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4043F1F-5AFC-4722-8D1F-08E8E4034257}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4043F1F-5AFC-4722-8D1F-08E8E4034257}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -678,7 +678,7 @@ namespace VstsApi.Net
         public static Project GetProject(string projectId)
         {
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/_apis/projects/{projectId}?api-version={ApiVersion}", password: VSTSPersonalAccessToken)).Result;
-            if (string.IsNullOrWhiteSpace(json)) return null;
+            if (json==null) return null;
 
             var result=new Project()
             {
