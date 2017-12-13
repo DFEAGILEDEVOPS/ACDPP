@@ -13,7 +13,7 @@
                 @Html.HiddenFor(m => Model.Id)
 
                 <h1 class="heading-large">
-                    @(Model.Id == null ? "Creating Project {Model.Name}..." : $"Saving Project {Model.Name}...")
+                    @(Model.Id == null ? $"Creating Project {Model.Name}..." : $"Saving Project {Model.Name}...")
                 </h1>
                 <h2 class="heading-medium">Project Details</h2>
                 if (Model.Id == null)

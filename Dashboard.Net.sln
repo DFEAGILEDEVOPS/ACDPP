@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27004.2009
+VisualStudioVersion = 15.0.26730.16
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VstsApi.Net", "VstsManager.Net\VstsApi.Net.csproj", "{6EABF9CC-B87D-43C5-A67E-99DBB89679CB}"
 EndProject
@@ -18,6 +18,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notify.NetStandard", "Notify.NetStandard\Notify.NetStandard.csproj", "{C1881792-2ED7-4A8C-82EB-A34BDB8D636D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard2.Net", "Dashboard2.Net\Dashboard2.Net.csproj", "{F4043F1F-5AFC-4722-8D1F-08E8E4034257}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Builder.Net", "Builder.Net\Builder.Net.csproj", "{2AD7907C-35B5-4CA7-8A0C-CE5AFAF7F5B4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -57,6 +59,10 @@ Global
 		{F4043F1F-5AFC-4722-8D1F-08E8E4034257}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F4043F1F-5AFC-4722-8D1F-08E8E4034257}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F4043F1F-5AFC-4722-8D1F-08E8E4034257}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2AD7907C-35B5-4CA7-8A0C-CE5AFAF7F5B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AD7907C-35B5-4CA7-8A0C-CE5AFAF7F5B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AD7907C-35B5-4CA7-8A0C-CE5AFAF7F5B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AD7907C-35B5-4CA7-8A0C-CE5AFAF7F5B4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

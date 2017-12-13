@@ -137,6 +137,7 @@ namespace AzureApi.Net
             var application = new Application { DisplayName = appName };
             application.IdentifierUris.Add(url);
             application.ReplyUrls.Add(url);
+
             activeDirectoryClient.Applications.AddApplicationAsync(application).Wait();
 
             //Create the service principal

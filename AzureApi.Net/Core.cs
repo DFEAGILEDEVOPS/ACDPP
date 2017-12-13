@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Management.Fluent;
+﻿using Extensions;
+using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
@@ -46,22 +47,33 @@ namespace AzureApi.Net
             return group;
         }
 
-        public static IEnumerable<IResourceGroup> ListResourceGroups(IAzure azure)
+        public static IEnumerable<IResourceGroup> ListResourceGroups(IAzure azure, string tagName=null, string tagValue=null)
         {
-            var groups = azure.ResourceGroups.List();
-            return groups;
+            if (!string.IsNullOrWhiteSpace(tagName)) return azure.ResourceGroups.ListByTag(tagName, tagValue);
+            return azure.ResourceGroups.List();
         }
 
-        public static IResourceGroup CreateResourceGroup(IAzure azure, string groupName, Region region=null)
+        public static IResourceGroup CreateResourceGroup(IAzure azure, string groupName, string regionName=null, string tagName = null, string tagValue = null)
         {
             var groups = ListResourceGroups(azure);
             var group = groups==null ? null : groups.FirstOrDefault(g=>g.Name.ToLower()==groupName.ToLower());
             if (group != null) return group;
 
-            if (region == null) region = Region.EuropeWest;
+            Region region = null;
+            if (string.IsNullOrWhiteSpace(regionName))
+                region = Region.EuropeWest;
+            else
+                region = Region.Values.FirstOrDefault(r=>r.Name.EqualsI(regionName));
 
-            group = azure.ResourceGroups.Define(groupName)
-                .WithRegion(region)
+            if (region == null) throw new ArgumentOutOfRangeException(nameof(regionName),$"Invalid region '{regionName}'");
+
+            if (string.IsNullOrWhiteSpace(tagName))
+                group = azure.ResourceGroups.Define(groupName)
+                    .WithRegion(region)
+                    .Create();
+            else
+                group = azure.ResourceGroups.Define(groupName)
+                .WithRegion(region).WithTag(tagName,tagValue)
                 .Create();
 
             return group;

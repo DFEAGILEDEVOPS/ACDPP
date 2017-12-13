@@ -29,9 +29,16 @@ namespace VstsApi.Net
 {
     public class VstsManager
     {
+        public static string AdminEmail = ConfigurationManager.AppSettings["VstsAdminEmail"];
         public static string SourceAccountName = ConfigurationManager.AppSettings["SourceAccountName"];
         public static string SourceProjectName = ConfigurationManager.AppSettings["SourceProjectName"];
         public static string SourceRepoName = ConfigurationManager.AppSettings["SourceRepoName"];
+
+        public static Project CreateProject(object projectName, object projectDescription)
+        {
+            throw new NotImplementedException();
+        }
+
         public static string SourceBuildName = ConfigurationManager.AppSettings["SourceBuildName"];
 
         public static string VSTSAccountEmail = ConfigurationManager.AppSettings["VSTSAccountEmail"];
