@@ -46,6 +46,12 @@ namespace AzureApi.Net
         {
             azure.SqlServers.DeleteById(server.Id);
         }
+        public static void SetPassword(ISqlServer server, string password)
+        {
+            if (string.IsNullOrWhiteSpace(password)) throw new ArgumentNullException(nameof(password));
+            server.Update().WithAdministratorPassword(password).Apply();
+        }
+
         #endregion
 
         #region Firewall rules
@@ -91,13 +97,13 @@ namespace AzureApi.Net
             return server.Databases.List();
         }
 
-        public static ISqlDatabase CreateDatabase(ISqlServer sqlServer, string databaseName, string serviceObjective="BASIC")
+        public static ISqlDatabase CreateDatabase(ISqlServer sqlServer, string databaseName, string pricingTier = "BASIC")
         {
             if (string.IsNullOrWhiteSpace(databaseName)) databaseName = SdkContext.RandomResourceName("sqldatabase", 20);
 
             var database = sqlServer.Databases
                            .Define(databaseName)
-                           .WithServiceObjective(serviceObjective)
+                           .WithServiceObjective(pricingTier)
                            .Create();
             return database;
         }
@@ -108,15 +114,10 @@ namespace AzureApi.Net
         }
         #endregion
 
-        public static ISqlServer CreateSqlServer(IAzure azure, string serverName, string resourceGroup, string adminUsername, string adminPassword, string startIP, string endIP)
+        public static ISqlServer CreateSqlServer(IAzure azure, string serverName, string resourceGroup, string adminUsername, string adminPassword)
         {
             //Create the server if it doesnt already exist
             var server = CreateServer(azure,serverName,resourceGroup,adminUsername,adminPassword);
-
-            //Create the firewall rule if it doesnt already exist
-            var ruleName = string.IsNullOrWhiteSpace(endIP) || startIP==endIP ? $"{startIP.Replace(".", "_")}" : $"{startIP.Replace(".","_")}-{endIP.Replace(".", "_")}";
-            var rule = GetFirewallRule(server, ruleName);
-            if (rule == null) rule=CreateFirewallRule(server, ruleName, startIP, endIP);
 
             //return the server name
             return server;
@@ -136,5 +137,9 @@ namespace AzureApi.Net
             return database;
         }
 
+        public static ISqlDatabase CreateDatabase(ISqlServer sqlServer, string databaseName, object serviceObjective)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

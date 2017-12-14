@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace Builder.Net
 {
-    public class CopyBuildModel
+    public class CreateRepoModel
     {
-        public string GroupName { get; set; }
         public string ProjectId { get; internal set; }
         public string RepoName { get; internal set; }
         public string Url { get; set; }

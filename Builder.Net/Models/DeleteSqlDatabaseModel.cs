@@ -8,10 +8,9 @@ namespace Builder.Net
 {
     public class DeleteSqlDatabaseModel
     {
-        public string VaultUri { get; set; }
-        public string VaultClientId { get; set; }
-        public string VaultClientSecret { get; set; }
-        public string SourceProjectId { get; set; }
+        public string ProjectId { get; set; }
         public string GroupName { get; set; }
+        public string ServerName { get; internal set; }
+        public string DatabaseName { get; set; }
     }
 }

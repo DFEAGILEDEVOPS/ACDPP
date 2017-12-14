@@ -147,6 +147,8 @@
   <ItemGroup>
     <Compile Include="ActiveDirectory\ActiveDirectory.cs" />
     <Compile Include="Builder.cs" />
+    <Compile Include="Models\CopyRepoModel.cs" />
+    <Compile Include="Models\CreateRepoModel.cs" />
     <Compile Include="Models\SaveTeamMembersModel.cs" />
     <Compile Include="Models\CopyReleaseModel.cs" />
     <Compile Include="Models\CopyBuildModel.cs" />
@@ -162,7 +164,7 @@
     <Compile Include="Models\SaveKeyVaultModel.cs" />
     <Compile Include="Models\DeleteResourceGroupModel.cs" />
     <Compile Include="Models\CreateResourceGroupModel.cs" />
-    <Compile Include="Models\CreateSqlServerModel.cs" />
+    <Compile Include="Models\SaveSqlServerModel.cs" />
     <Compile Include="Models\CreateStorageModel.cs" />
     <Compile Include="Models\DeleteProjectModel.cs" />
     <Compile Include="Models\QueueBuildModel.cs" />

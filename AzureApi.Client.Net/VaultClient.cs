@@ -1,6 +1,7 @@
 ﻿using Microsoft.Azure.KeyVault;
 using Newtonsoft.Json;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Net.Http;
@@ -25,13 +26,16 @@ namespace AzureApi.Client.Net
         public string VaultClientSecret;
         public string AzureTenantId;
 
-        public string GetSecret(string key)
+        public string GetSecret(string secretName)
         {
             var client = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(GetAccessTokenAsync),new System.Net.Http.HttpClient());
+            var secrets = Task.Run(async () => await client.GetSecretsAsync(VaultUrl)).Result;
+            var secret = secrets.FirstOrDefault(s=>s.Identifier.Name==secretName);
+            if (secret == null) return null;
+
+            var value = Task.Run(async ()=>await client.GetSecretAsync(VaultUrl, secretName))?.Result?.Value;
             
-            var secret = Task.Run(async ()=>await client.GetSecretAsync(VaultUrl, key));
-            
-            return secret?.Result?.Value;
+            return value;
         }
 
         public string SetSecret(string key, string value)

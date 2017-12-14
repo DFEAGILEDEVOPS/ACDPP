@@ -8,6 +8,7 @@ using VstsApi.Net.Classes;
 using AzureApi.Net;
 using AzureApi.Client.Net;
 using Microsoft.Azure.ActiveDirectory.GraphClient;
+using Microsoft.Azure.Management.Fluent;
 
 namespace Builder.Net
 {
@@ -25,7 +26,6 @@ namespace Builder.Net
         private readonly string ActiveDirectoryClientSecret;
         private readonly string AzureTenantId;
         private readonly string AzureSubscriptionId;
-
 
         public SaveProjectModel SaveProject(SaveProjectModel model)
         {
@@ -185,6 +185,7 @@ namespace Builder.Net
             if (string.IsNullOrWhiteSpace(model.GroupName)) throw new ArgumentNullException(nameof(model.GroupName));
 
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
+
             var groups = Core.ListResourceGroups(azure);
             var group = groups?.FirstOrDefault(g => g.Id==model.GroupId);
             if (group == null)
@@ -352,12 +353,8 @@ namespace Builder.Net
 
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
 
-            var groups = Core.ListResourceGroups(azure);
-            var group = groups?.FirstOrDefault(g => g.Name.EqualsI(model.GroupName));
-            if (group == null) throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' does not exist");
-
-            if (!group.Tags.ContainsKey("VstsProjectId") || group.Tags["VstsProjectId"] != model.ProjectId)
-                throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' is not associated with this project");
+            //Check the group belongs to this project
+            CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
             var vaults = KeyVaultBuilder.ListKeyVaults(azure, group.Name);
             var vault = vaults?.FirstOrDefault(v => v.Name.EqualsI(model.VaultName));
@@ -394,12 +391,8 @@ namespace Builder.Net
 
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
 
-            var groups = Core.ListResourceGroups(azure);
-            var group = groups?.FirstOrDefault(g => g.Name.EqualsI(model.GroupName));
-            if (group == null) throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' does not exist");
-
-            if (!group.Tags.ContainsKey("VstsProjectId") || group.Tags["VstsProjectId"] != model.ProjectId)
-                throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' is not associated with this project");
+            //Check the group belongs to this project
+            CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
             var vaults = KeyVaultBuilder.ListKeyVaults(azure, group.Name);
             var vault = vaults?.FirstOrDefault(v => v.Name.EqualsI(model.VaultName));
@@ -425,12 +418,8 @@ namespace Builder.Net
 
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
 
-            var groups = Core.ListResourceGroups(azure);
-            var group = groups?.FirstOrDefault(g => g.Name.EqualsI(model.GroupName));
-            if (group == null) throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' does not exist");
-
-            if (!group.Tags.ContainsKey("VstsProjectId") || group.Tags["VstsProjectId"] != model.ProjectId)
-                throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' is not associated with this project");
+            //Check the group belongs to this project
+            CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
             var cache = CacheBuilder.GetCache(azure, model.CacheName, model.GroupName);
             if (cache == null)
@@ -454,12 +443,8 @@ namespace Builder.Net
 
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
 
-            var groups = Core.ListResourceGroups(azure);
-            var group = groups?.FirstOrDefault(g => g.Name.EqualsI(model.GroupName));
-            if (group == null) throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' does not exist");
-
-            if (!group.Tags.ContainsKey("VstsProjectId") || group.Tags["VstsProjectId"] != model.ProjectId)
-                throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' is not associated with this project");
+            //Check the group belongs to this project
+            CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
             var cache = CacheBuilder.GetCache(azure, model.CacheName, model.GroupName);
 
@@ -482,12 +467,8 @@ namespace Builder.Net
 
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
 
-            var groups = Core.ListResourceGroups(azure);
-            var group = groups?.FirstOrDefault(g => g.Name.EqualsI(model.GroupName));
-            if (group == null) throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' does not exist");
-
-            if (!group.Tags.ContainsKey("VstsProjectId") || group.Tags["VstsProjectId"] != model.ProjectId)
-                throw new ArgumentException(nameof(model.GroupName), $"Group '{model.GroupName}' is not associated with this project");
+            //Check the group belongs to this project
+            CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
             var storageAccount = StorageBuilder.GetAccount(azure, model.StorageAccountName, model.GroupName);
             if (storageAccount == null)
@@ -529,124 +510,219 @@ namespace Builder.Net
             }
         }
 
-        public CreateSqlServerModel CreateSqlServer(CreateSqlServerModel model, TextWriter log)
+        public SaveSqlServerModel SaveSqlServer(SaveSqlServerModel model, TextWriter log)
         {
+            if (string.IsNullOrWhiteSpace(model.ProjectId)) throw new ArgumentNullException(nameof(model.ProjectId));
+            if (string.IsNullOrWhiteSpace(model.GroupName)) throw new ArgumentNullException(nameof(model.GroupName));
+            if (string.IsNullOrWhiteSpace(model.ServerName)) throw new ArgumentNullException(nameof(model.ServerName));
+            if (string.IsNullOrWhiteSpace(model.AdministratorLogin)) throw new ArgumentNullException(nameof(model.AdministratorLogin));
+            if (model.FirewallRules.Count==0 && !model.AllowAzureAccess) throw new ArgumentException(nameof(model.FirewallRules),"You must specify at least one firewall rule or allow access to all azure services");
+
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
 
-            var vaultClient = new VaultClient(model.VaultUri, model.VaultClientId, model.VaultClientSecret, AzureTenantId);
+            //Check the group belongs to this project
+            CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
-            string serverName = "sqlsrv-acdpp-" + model.SourceProjectId;
-            string adminUsername = $"{serverName}admin";
-            string adminPassword = Encryption.EncryptData(model.SourceProjectId);
-            adminPassword = adminPassword.Strip(@" /-=+\");
+            //Ensure we always have a password
+            if (string.IsNullOrWhiteSpace(model.AdministratorPassword)) model.AdministratorPassword = Crypto.GeneratePasscode(Text.AlphaNumericChars.ToCharArray(), 42);
 
-            var sqlServer = SqlDatabaseBuilder.GetServer(azure, serverName, model.GroupName);
-            if (sqlServer == null) sqlServer = SqlDatabaseBuilder.CreateSqlServer(azure, serverName, model.GroupName, adminUsername, adminPassword, AppSettings.AppStartIP, AppSettings.AppEndIP);
+            var sqlServer = SqlDatabaseBuilder.GetServer(azure, model.ServerName, model.GroupName);
+            if (sqlServer == null)
+            {
+                sqlServer = SqlDatabaseBuilder.CreateSqlServer(azure, model.ServerName, model.GroupName, model.AdministratorLogin, model.AdministratorPassword);
+                log.WriteLine($"Sql Server '{sqlServer.Name}' created in resource group '{sqlServer.ResourceGroupName}'");
+            }
+            else
+            {
+                SqlDatabaseBuilder.SetPassword(sqlServer, model.AdministratorPassword);
+                log.WriteLine($"Password reset for Sql Server '{sqlServer.Name}' in resource group '{sqlServer.ResourceGroupName}' already exists.");
+            }
 
-            //Always use the server admin login
-            if (!adminUsername.EqualsI(sqlServer.AdministratorLogin)) adminUsername = sqlServer.AdministratorLogin;
+            //Set the firewall rules
+            if (model.AllowAzureAccess) model.FirewallRules.Add("0.0.0.0-0.0.0.0");
+            foreach (var newRule in model.FirewallRules)
+            {
+                var startIP = newRule.BeforeFirst("-");
+                if (string.IsNullOrEmpty(startIP))startIP = newRule.BeforeFirst(":");
+                var endIP = newRule.AfterFirst("-");
+                if (string.IsNullOrEmpty(endIP)) endIP = newRule.AfterFirst(":");
 
-            //Make sure the admin password is correct 
-            sqlServer.Update().WithAdministratorPassword(adminPassword).Apply();
-
-            string databaseName = "db-acdpp-" + model.SourceProjectId;
-            var sqlDatabase = SqlDatabaseBuilder.GetDatabase(sqlServer, databaseName);
-            if (sqlDatabase == null) sqlDatabase = SqlDatabaseBuilder.CreateDatabase(sqlServer, databaseName);
-
-            string connectionString = $"Server=tcp:{serverName}.database.windows.net,1433;Initial Catalog={databaseName};Persist Security Info=False;User ID={adminUsername};Password={adminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
-
-            var secretId = vaultClient.SetSecret("DefaultConnection", connectionString);
-
+                //Create the firewall rule if it doesnt already exist
+                var ruleName = string.IsNullOrWhiteSpace(endIP) || startIP == endIP ? $"{startIP.Replace(".", "_")}" : $"{startIP.Replace(".", "_")}-{endIP.Replace(".", "_")}";
+                var rule = SqlDatabaseBuilder.GetFirewallRule(sqlServer, ruleName);
+                if (rule == null)
+                {
+                    rule = SqlDatabaseBuilder.CreateFirewallRule(sqlServer, ruleName, startIP, endIP);
+                    log.WriteLine($"Firewall '{rule.StartIPAddress}:{rule.EndIPAddress}' created for Sql Server '{sqlServer.Name}' in resource group '{sqlServer.ResourceGroupName}'.");
+                }
+                else
+                {
+                    log.WriteLine($"Firewall '{rule.StartIPAddress}:{rule.EndIPAddress}' already exists for Sql Server '{sqlServer.Name}' in resource group '{sqlServer.ResourceGroupName}'.");
+                }
+            }
             return model;
         }
 
         public void DeleteSqlServer(DeleteSqlServerModel model, TextWriter log)
         {
+            if (string.IsNullOrWhiteSpace(model.ServerName)) throw new ArgumentNullException(nameof(model.ServerName));
+            if (string.IsNullOrWhiteSpace(model.GroupName)) throw new ArgumentNullException(nameof(model.GroupName));
+            if (string.IsNullOrWhiteSpace(model.ProjectId)) throw new ArgumentNullException(nameof(model.ProjectId));
+
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
 
-            var vaultClient = new VaultClient(model.VaultUri, model.VaultClientId, model.VaultClientSecret, AzureTenantId);
+            //Check the group belongs to this project
+            CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
-            string serverName = "sqlsrv-acdpp-" + model.SourceProjectId;
-            string adminUsername = $"{serverName}admin";
-            string adminPassword = Encryption.EncryptData(model.SourceProjectId);
-            adminPassword = adminPassword.Strip(@" /-=+\");
+            var server = SqlDatabaseBuilder.GetServer(azure,model.ServerName, model.GroupName);
+            if (server == null)
+            {
+                log.WriteLine($"Sql Server '{model.ServerName}' does not exists in resource group '{model.GroupName}'");
+                return;
+            }
 
-            var sqlServer = SqlDatabaseBuilder.GetServer(azure, serverName, model.GroupName);
-            if (sqlServer == null) sqlServer = SqlDatabaseBuilder.CreateSqlServer(azure, serverName, model.GroupName, adminUsername, adminPassword, AppSettings.AppStartIP, AppSettings.AppEndIP);
+            var count = server.Databases.List().Count;
+            if (count>0) throw new Exception($"Sql Server '{server.Name}' still contains {count} database(s)");
 
-            //Always use the server admin login
-            if (!adminUsername.EqualsI(sqlServer.AdministratorLogin)) adminUsername = sqlServer.AdministratorLogin;
-
-            //Make sure the admin password is correct 
-            sqlServer.Update().WithAdministratorPassword(adminPassword).Apply();
-
-            string databaseName = "db-acdpp-" + model.SourceProjectId;
-            var sqlDatabase = SqlDatabaseBuilder.GetDatabase(sqlServer, databaseName);
-            if (sqlDatabase == null) sqlDatabase = SqlDatabaseBuilder.CreateDatabase(sqlServer, databaseName);
-
-            string connectionString = $"Server=tcp:{serverName}.database.windows.net,1433;Initial Catalog={databaseName};Persist Security Info=False;User ID={adminUsername};Password={adminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
-
-            var secretId = vaultClient.SetSecret("DefaultConnection", connectionString);
+            
+            //Delete the SQL Server
+            azure.SqlServers.DeleteById(server.Id);
+            log.WriteLine($"Sql Server '{model.ServerName}' in group '{model.GroupName}' deleted");
         }
 
         public CreateSqlDatabaseModel CreateSqlDatabase(CreateSqlDatabaseModel model, TextWriter log)
         {
+            if (string.IsNullOrWhiteSpace(model.ProjectId)) throw new ArgumentNullException(nameof(model.ProjectId));
+            if (string.IsNullOrWhiteSpace(model.GroupName)) throw new ArgumentNullException(nameof(model.GroupName));
+            if (string.IsNullOrWhiteSpace(model.ServerName)) throw new ArgumentNullException(nameof(model.ServerName));
+            if (string.IsNullOrWhiteSpace(model.DatabaseName)) throw new ArgumentNullException(nameof(model.DatabaseName));
+
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
 
-            var vaultClient = new VaultClient(model.VaultUri, model.VaultClientId, model.VaultClientSecret, AzureTenantId);
+            //Check the group belongs to this project
+            CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
-            string serverName = "sqlsrv-acdpp-" + model.SourceProjectId;
-            string adminUsername = $"{serverName}admin";
-            string adminPassword = Encryption.EncryptData(model.SourceProjectId);
-            adminPassword = adminPassword.Strip(@" /-=+\");
+            var sqlServer = SqlDatabaseBuilder.GetServer(azure, model.ServerName, model.GroupName);
+            if (sqlServer == null) throw new ArgumentException(nameof(model.ServerName),$"Sql Server '{model.ServerName}' does not exist in resource group '{model.GroupName}'");
 
-            var sqlServer = SqlDatabaseBuilder.GetServer(azure, serverName, model.GroupName);
-            if (sqlServer == null) sqlServer = SqlDatabaseBuilder.CreateSqlServer(azure, serverName, model.GroupName, adminUsername, adminPassword, AppSettings.AppStartIP, AppSettings.AppEndIP);
+            var sqlDatabase = SqlDatabaseBuilder.GetDatabase(sqlServer, model.DatabaseName);
+            if (sqlDatabase == null)
+            {
+                sqlDatabase = SqlDatabaseBuilder.CreateDatabase(sqlServer, model.DatabaseName, model.PricingTier);
+                log.WriteLine($"Sql database '{sqlDatabase.Name}'({model.PricingTier}) on server '{sqlServer.Name}' successfully created.");
+            }
+            else
+            {
+                //Change the pricing tier
+                if (!sqlDatabase.ServiceLevelObjective.EqualsI(model.PricingTier))
+                {
+                    var oldTier = sqlDatabase.ServiceLevelObjective;
+                    sqlDatabase.Update().WithServiceObjective(model.PricingTier).Apply();
+                    log.WriteLine($"Sql database '{sqlDatabase.Name}'({oldTier}) on server '{sqlServer.Name}' updated to {sqlDatabase.ServiceLevelObjective}");
+                }
+                else
+                    log.WriteLine($"Sql database '{sqlDatabase.Name}'({model.PricingTier}) on server '{sqlServer.Name}' already exists.");
 
-            //Always use the server admin login
-            if (!adminUsername.EqualsI(sqlServer.AdministratorLogin)) adminUsername = sqlServer.AdministratorLogin;
-
-            //Make sure the admin password is correct 
-            sqlServer.Update().WithAdministratorPassword(adminPassword).Apply();
-
-            string databaseName = "db-acdpp-" + model.SourceProjectId;
-            var sqlDatabase = SqlDatabaseBuilder.GetDatabase(sqlServer, databaseName);
-            if (sqlDatabase == null) sqlDatabase = SqlDatabaseBuilder.CreateDatabase(sqlServer, databaseName);
-
-            string connectionString = $"Server=tcp:{serverName}.database.windows.net,1433;Initial Catalog={databaseName};Persist Security Info=False;User ID={adminUsername};Password={adminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
-
-            var secretId = vaultClient.SetSecret("DefaultConnection", connectionString);
+            }
 
             return model;
         }
 
         public void DeleteSqlDatabase(DeleteSqlDatabaseModel model, TextWriter log)
         {
+            if (string.IsNullOrWhiteSpace(model.ServerName)) throw new ArgumentNullException(nameof(model.ServerName));
+            if (string.IsNullOrWhiteSpace(model.GroupName)) throw new ArgumentNullException(nameof(model.GroupName));
+            if (string.IsNullOrWhiteSpace(model.ProjectId)) throw new ArgumentNullException(nameof(model.ProjectId));
+
             var azure = Core.Authenticate(ActiveDirectoryClientId, ActiveDirectoryClientSecret, AzureTenantId, AzureSubscriptionId);
 
-            var vaultClient = new VaultClient(model.VaultUri, model.VaultClientId, model.VaultClientSecret, AzureTenantId);
+            //Check the group belongs to this project
+            CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
-            string serverName = "sqlsrv-acdpp-" + model.SourceProjectId;
-            string adminUsername = $"{serverName}admin";
-            string adminPassword = Encryption.EncryptData(model.SourceProjectId);
-            adminPassword = adminPassword.Strip(@" /-=+\");
+            var server = SqlDatabaseBuilder.GetServer(azure, model.ServerName, model.GroupName);
+            if (server == null)throw new Exception($"Sql Server '{model.ServerName}' does not exists in resource group '{model.GroupName}'");
 
-            var sqlServer = SqlDatabaseBuilder.GetServer(azure, serverName, model.GroupName);
-            if (sqlServer == null) sqlServer = SqlDatabaseBuilder.CreateSqlServer(azure, serverName, model.GroupName, adminUsername, adminPassword, AppSettings.AppStartIP, AppSettings.AppEndIP);
+            var database=SqlDatabaseBuilder.GetDatabase(server, model.DatabaseName);
+            if (database == null)
+            {
+                log.WriteLine($"Sql Database '{model.DatabaseName}' does not exists on Sql Server '{model.ServerName}'");
+                return;
+            }
 
-            //Always use the server admin login
-            if (!adminUsername.EqualsI(sqlServer.AdministratorLogin)) adminUsername = sqlServer.AdministratorLogin;
+            //Delete the database
+            database.Delete();
+            log.WriteLine($"Sql Database '{model.DatabaseName}' on Sql Server '{model.ServerName}' deleted");
+        }
 
-            //Make sure the admin password is correct 
-            sqlServer.Update().WithAdministratorPassword(adminPassword).Apply();
+        public CreateRepoModel CreateRepo(CreateRepoModel model, TextWriter log)
+        {
+            //Check if the repo already exists 
+            var repos = VstsManager.GetRepos(model.ProjectId);
+            var repo = repos?.FirstOrDefault(r=>r.Name.EqualsI(model.RepoName));
 
-            string databaseName = "db-acdpp-" + model.SourceProjectId;
-            var sqlDatabase = SqlDatabaseBuilder.GetDatabase(sqlServer, databaseName);
-            if (sqlDatabase == null) sqlDatabase = SqlDatabaseBuilder.CreateDatabase(sqlServer, databaseName);
+            //Create a new repo
+            if (repo == null)
+            {
+                var repoId = VstsManager.CreateRepo(model.ProjectId, model.RepoName);
+                if (string.IsNullOrWhiteSpace(repoId)) throw new Exception($"Could not create repo '{model.RepoName}'");
+                repo = repos?.FirstOrDefault(r => r.Name.EqualsI(model.RepoName));
+                log.WriteLine($"Repo '{repo.Name}' created successfully");
+            }
+            else
+            {
+                log.WriteLine($"Repo '{repo.Name}' already exists");
+            }
+            model.Url = repo.Url;
+            return model;
+        }
 
-            string connectionString = $"Server=tcp:{serverName}.database.windows.net,1433;Initial Catalog={databaseName};Persist Security Info=False;User ID={adminUsername};Password={adminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
+        public CopyRepoModel CopyRepo(CopyRepoModel model, TextWriter log)
+        {
+            if (string.IsNullOrWhiteSpace(model.SourceProjectId)) throw new ArgumentNullException(nameof(model.SourceProjectId));
+            if (string.IsNullOrWhiteSpace(model.SourceRepoName)) throw new ArgumentNullException(nameof(model.SourceRepoName));
+            if (string.IsNullOrWhiteSpace(model.TargetProjectId)) throw new ArgumentNullException(nameof(model.TargetProjectId));
+            if (string.IsNullOrWhiteSpace(model.TargetRepoName)) throw new ArgumentNullException(nameof(model.TargetRepoName));
 
-            var secretId = vaultClient.SetSecret("DefaultConnection", connectionString);
+            var targetProject = VstsManager.GetProject(model.TargetProjectId);
+            if (targetProject == null) throw new ArgumentException(nameof(model.TargetProjectId), $"Target Project '{model.TargetProjectId}' does not exist");
+
+            var targetRepos = VstsManager.GetRepos(model.SourceProjectId);
+            var targetRepo = targetRepos?.FirstOrDefault(r => r.Name.EqualsI(model.TargetRepoName));
+            if (targetRepo != null)
+            {
+                log.WriteLine($"Repo '{model.TargetRepoName}' already exists in project '{targetProject.Name}'");
+                model.TargetUrl = targetRepo.Url;
+                return model;
+            }
+
+            var sourceProject = VstsManager.GetProject(model.SourceProjectId);
+            if (sourceProject == null) throw new ArgumentException(nameof(model.SourceProjectId), $"Source Project '{model.SourceProjectId}' does not exist");
+
+            //Check if the repo already exists 
+            var sourceRepos = VstsManager.GetRepos(model.SourceProjectId);
+            var sourceRepo = sourceRepos?.FirstOrDefault(r => r.Name.EqualsI(model.SourceRepoName));
+            if (sourceRepo == null) throw new Exception($"Repo '{model.SourceRepoName}' does not exist in project '{sourceProject.Name}'");
+
+            //Create a new repo
+            var repoId = VstsManager.CreateRepo(targetProject.Id, model.TargetRepoName);
+            if (string.IsNullOrWhiteSpace(repoId)) throw new Exception($"Could not create target repo '{model.TargetRepoName}' in project '{targetProject.Name}'");
+
+            targetRepos = VstsManager.GetRepos(model.SourceProjectId);
+            targetRepo = targetRepos?.FirstOrDefault(r => r.Name.EqualsI(model.TargetRepoName));
+
+            log.WriteLine($"Repo '{sourceRepo.Name}' created successfully");
+            model.TargetUrl = targetRepo.Url;
+
+            //copy the sample repo if it doesnt already exist
+            var authParameters = new Dictionary<string, string>();
+            if (string.IsNullOrWhiteSpace(repo.DefaultBranch))
+            {
+                authParameters["username"] = "";
+                authParameters["password"] = AppSettings.VSTSPersonalAccessToken;
+                var serviceEndpoint = VstsManager.CreateEndpoint(sourceProject.Id, $"Temp-Import-{Guid.NewGuid()}", "Git", sourceRepo.Url, "PersonalAccessToken", authParameters);
+                VstsManager.ImportRepo(sourceProject.Id, targetRepo.Id, sourceRepo.Url, serviceEndpoint.Id);
+            }
+            return model;
         }
 
         public void CopyBuild(CopyBuildModel model, TextWriter log)
@@ -667,6 +743,16 @@ namespace Builder.Net
         public void SendEmail(SendEmailModel model, TextWriter log)
         {
             
+        }
+
+
+        private void CheckProjectGroup(IAzure azure, string groupName, string projectId)
+        {
+            var group = Core.GetResourceGroup(azure, groupName);
+            if (group == null) throw new ArgumentException(nameof(groupName), $"Group '{groupName}' does not exist");
+
+            if (!group.Tags.ContainsKey("VstsProjectId") || group.Tags["VstsProjectId"] != projectId)
+                throw new ArgumentException(nameof(groupName), $"Group '{groupName}' is not associated with project '{projectId}'");
         }
 
     }
