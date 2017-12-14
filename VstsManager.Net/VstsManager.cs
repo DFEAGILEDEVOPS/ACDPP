@@ -24,6 +24,7 @@ using System.Net.Http;
 using Microsoft.TeamFoundation.Build.WebApi;
 using VstsApi.Net.Classes;
 using Newtonsoft.Json;
+using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Clients;
 
 namespace VstsApi.Net
 {
@@ -199,7 +200,7 @@ namespace VstsApi.Net
             }
         }
 
-        public static Definition CloneDefinition(string sourceProjectName, string sourceBuildName, string targetProjectName, Repo repo, Dictionary<string, string> variables = null, Dictionary<string,string> secrets=null, bool overwrite=false)
+        public static Classes.BuildDefinition CloneBuildDefinition(string sourceProjectName, string sourceBuildName, string targetProjectName, Repo targetRepo, Dictionary<string, string> variables = null, Dictionary<string,string> secrets=null, bool overwrite=false)
         {
             using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
             {
@@ -217,16 +218,14 @@ namespace VstsApi.Net
 
 
                 var targetProject = projects?.FirstOrDefault(p => p.Name.EqualsI(targetProjectName)) as TeamProjectReference;
-                if (sourceProject == null) throw new ArgumentException($"Target Project '{sourceProjectName}' does not exist");
+                if (targetProject == null) throw new ArgumentException($"Target Project '{targetProjectName}' does not exist");
 
                 var targetBuildRef = buildClient.GetDefinitionsAsync(targetProject.Id, sourceBuildName).Result.FirstOrDefault();
 
                 if (targetBuildRef != null)
                 {
-                    if (overwrite)
-                        buildClient.DeleteDefinitionAsync(targetProject.Id, targetBuildRef.Id);
-                    else
-                        throw new ArgumentException($"Target Build '{sourceBuildName}' already exists");
+                    if (!overwrite) throw new ArgumentException($"Target Build '{sourceBuildName}' already exists");
+                    buildClient.DeleteDefinitionAsync(targetProject.Id, targetBuildRef.Id);
                 }
 
                 sourceBuild.Project = null;
@@ -255,12 +254,12 @@ namespace VstsApi.Net
                     sourceBuild.Repository.Properties["connectedServiceId"] = targetEndpoint.Id;
                 }
 
-                if (repo.Project.Id.ToGuid()==targetProject.Id && repo.Name.EqualsI(sourceBuild.Repository.Name))
+                if (targetRepo.Project.Id.ToGuid()==targetProject.Id && targetRepo.Name.EqualsI(sourceBuild.Repository.Name))
                 {
-                    sourceBuild.Repository.Id = repo.Id;
-                    sourceBuild.Repository.Name = repo.Name;
-                    sourceBuild.Repository.DefaultBranch = repo.DefaultBranch;
-                    sourceBuild.Repository.Url = new Uri(repo.RemoteUrl);
+                    sourceBuild.Repository.Id = targetRepo.Id;
+                    sourceBuild.Repository.Name = targetRepo.Name;
+                    sourceBuild.Repository.DefaultBranch = targetRepo.DefaultBranch;
+                    sourceBuild.Repository.Url = new Uri(targetRepo.RemoteUrl);
                 }
 
                 var queue = GetQueues(targetProject.Id.ToString(),sourceBuild.Queue.Name).FirstOrDefault();
@@ -286,19 +285,91 @@ namespace VstsApi.Net
                 var targetBuild =buildClient.CreateDefinitionAsync(sourceBuild, targetProject.Id);
                 targetBuild.Wait();
                 var definition = targetBuild?.Result;
-                return GetDefinitions(targetProject.Id.ToString(),definition.Name).FirstOrDefault();
+                return GetBuildDefinitions(targetProject.Id.ToString(),definition.Name).FirstOrDefault();
             }
         }
 
-        public static List<Definition> GetDefinitions(string project, string name=null)
+        public static List<Classes.BuildDefinition> GetBuildDefinitions(string project, string name=null)
         {
             var apiVersion = "2.0";
 
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{project}/_apis/build/definitions?api-version={apiVersion}{(string.IsNullOrWhiteSpace(name) ? "" : "&name="+name)}", password: VSTSPersonalAccessToken)).Result;
-            var results = new List<Definition>();
+            var results = new List<Classes.BuildDefinition>();
             foreach (var item in json.value)
             {
-                results.Add(new Definition()
+                results.Add(new Classes.BuildDefinition()
+                {
+                    Id = (string)item.id,
+                    Name = (string)item.name,
+                    Url = (string)item.url,
+                    Revision = (string)item.revision
+                });
+            }
+            return results;
+        }
+
+        public static Classes.ReleaseDefinition CloneReleaseDefinition(string sourceProjectName, string sourceReleaseName, string targetProjectName, Repo targetRepo, Dictionary<string, string> variables = null, Dictionary<string, string> secrets = null, bool overwrite = false)
+        {
+            using (var connection = GetConnection(SourceCollectionUrl, VSTSPersonalAccessToken))
+            {
+                //Check the source project exists
+                var projectClient = connection.GetClientAsync<ProjectHttpClient>().Result;
+                var projects = projectClient.GetProjects(ProjectState.WellFormed).Result;
+                var sourceProject = projects?.FirstOrDefault(p => p.Name.EqualsI(sourceProjectName));
+                if (sourceProject == null) throw new ArgumentException($"Source Project '{sourceProjectName}' does not exist");
+
+                //Check the source definition exists
+                var releaseClient = connection.GetClientAsync<ReleaseHttpClient>().Result;
+                var sourceDefinitions = releaseClient.GetReleaseDefinitionsAsync(sourceProject.Id).Result;
+                var sourceReleaseDef = sourceDefinitions?.FirstOrDefault(b => b.Name.EqualsI(sourceReleaseName));
+                if (sourceReleaseDef == null) throw new ArgumentException($"Source Release Definition '{sourceReleaseName}' does not exist");
+
+                //Get the source definition
+                var sourceRelease = releaseClient.GetReleaseDefinitionAsync(sourceProject.Id, sourceReleaseDef.Id).Result;
+
+                //Check the target project exists
+                var targetProject = projects?.FirstOrDefault(p => p.Name.EqualsI(targetProjectName)) as TeamProjectReference;
+                if (targetProject == null) throw new ArgumentException($"Target Project '{targetProjectName}' does not exist");
+
+                //Delete the existing target definition
+                var targetReleaseRef = releaseClient.GetReleaseDefinitionsAsync(targetProject.Id, sourceReleaseName).Result.FirstOrDefault();
+                if (targetReleaseRef != null)
+                {
+                    if (!overwrite) throw new ArgumentException($"Target Release '{sourceReleaseName}' already exists");
+                    releaseClient.DeleteReleaseDefinitionAsync(targetProject.Id, targetReleaseRef.Id);
+                }
+
+                //TODO
+               
+                //Copy the variables and secrets
+                if (variables != null)
+                    foreach (var key in variables.Keys)
+                        sourceRelease.Variables[key].Value = variables[key];
+
+                if (secrets != null)
+                    foreach (var key in secrets.Keys)
+                    {
+                        sourceRelease.Variables[key].Value = secrets[key];
+                        sourceRelease.Variables[key].IsSecret = true;
+                    }
+
+                sourceRelease.VariableGroups.Clear();
+                var targetRelease = releaseClient.CreateReleaseDefinitionAsync(sourceRelease, targetProject.Id);
+                targetRelease.Wait();
+                var definition = targetRelease?.Result;
+                return GetReleaseDefinitions(targetProject.Id.ToString(), definition.Name).FirstOrDefault();
+            }
+        }
+
+        public static List<ReleaseDefinition> GetReleaseDefinitions(string project, string name = null)
+        {
+            var apiVersion = "4-0-preview-3";
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{project}/_apis/release/definitions?api-version={apiVersion}{(string.IsNullOrWhiteSpace(name) ? "" : "&isExactNameMatch=true&searchText=" + name)}", password: VSTSPersonalAccessToken)).Result;
+            var results = new List<ReleaseDefinition>();
+            foreach (var item in json.value)
+            {
+                results.Add(new ReleaseDefinition()
                 {
                     Id = (string)item.id,
                     Name = (string)item.name,
@@ -354,7 +425,7 @@ namespace VstsApi.Net
 
         public static List<Build> GetBuilds(string project, string build, Dictionary<string,string> parameters=null)
         {
-            var definitionId=build.IsInteger() ? build : GetDefinitions(project,build).FirstOrDefault()?.Id;
+            var definitionId=build.IsInteger() ? build : GetBuildDefinitions(project,build).FirstOrDefault()?.Id;
             var apiVersion = "2.0";
 
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{project}/_apis/build/builds?api-version={apiVersion}&definitions={definitionId}&statusFilter=all", password: VSTSPersonalAccessToken)).Result;
@@ -365,7 +436,7 @@ namespace VstsApi.Net
                 {
                     Id = (string)item.id,
                     Url = (string)item.url,
-                    Definition = new Definition()
+                    Definition = new Classes.BuildDefinition()
                     {
                         Id= (string)item.definition.id,
                         Name= (string)item.definition.name,
@@ -407,7 +478,7 @@ namespace VstsApi.Net
             {
                 Id = (string)json.id,
                 Url = (string)json.url,
-                Definition = new Definition()
+                Definition = new Classes.BuildDefinition()
                 {
                     Id = (string)json.definition.id,
                     Name = (string)json.definition.name,
@@ -448,7 +519,7 @@ namespace VstsApi.Net
             {
                 Id = (string)json.id,
                 Url = (string)json.url,
-                Definition = new Definition()
+                Definition = new Classes.BuildDefinition()
                 {
                     Id = (string)json.definition.id,
                     Name = (string)json.definition.name,
@@ -997,6 +1068,48 @@ namespace VstsApi.Net
             };
             var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Post, $"{SourceCollectionUrl}/{projectId}/_apis/git/repositories/{repoId}/importRequests?api-version={apiVersion}", password: VSTSPersonalAccessToken, body: body)).Result;
             return json?.importRequestId;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="projectId"></param>
+        /// <param name="repoId"></param>
+        /// <param name="importRequestId"></param>
+        /// <param name="timeoutSeconds"></param>
+        /// <returns>abandoned, completed, failed, inProgress, queued</returns>
+        public static string WaitForImport(string projectId, string repoId, string importRequestId, int timeoutSeconds = 120)
+        {
+            DateTime expiration = timeoutSeconds < 1 ? DateTime.MaxValue : DateTime.Now.AddSeconds(timeoutSeconds);
+            string status = null;
+            do
+            {
+                if (status != null)
+                {
+                    if (DateTime.Now > expiration)return "timeout";
+                    Thread.Sleep(intervalInSec * 2000);
+                }
+                status = GetImportStatus(projectId, repoId, importRequestId);
+            }
+            while (status.EqualsI("queued", "inProgress"));
+
+            return status;
+       }
+
+        /// <summary>
+        /// queued, abandoned. completed, failed, inProgress, queued
+        /// </summary>
+        /// <param name="projectId"></param>
+        /// <returns></returns>
+        public static string GetImportStatus(string projectId, string repoId, string importRequestId)
+        {
+            const string apiVersion = "3.0-preview";
+
+            var json = Task.Run(async () => await Web.CallJsonApiAsync(HttpMethods.Get, $"{SourceCollectionUrl}/{projectId}/_apis/git/repositories/{repoId}/importRequests/{importRequestId}?api-version={apiVersion}", password: VSTSPersonalAccessToken)).Result;
+
+            if (json == null) return null;
+
+            return json.status;
         }
         #endregion
 

@@ -356,7 +356,7 @@ namespace Builder.Net
             //Check the group belongs to this project
             CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
-            var vaults = KeyVaultBuilder.ListKeyVaults(azure, group.Name);
+            var vaults = KeyVaultBuilder.ListKeyVaults(azure, model.GroupName);
             var vault = vaults?.FirstOrDefault(v => v.Name.EqualsI(model.VaultName));
 
             //Create the vault with permission to active directory client
@@ -394,7 +394,7 @@ namespace Builder.Net
             //Check the group belongs to this project
             CheckProjectGroup(azure, model.GroupName, model.ProjectId);
 
-            var vaults = KeyVaultBuilder.ListKeyVaults(azure, group.Name);
+            var vaults = KeyVaultBuilder.ListKeyVaults(azure, model.GroupName);
             var vault = vaults?.FirstOrDefault(v => v.Name.EqualsI(model.VaultName));
 
             //Create the vault with permission to active directory client
@@ -412,7 +412,7 @@ namespace Builder.Net
 
         public CreateCacheModel CreateCache(CreateCacheModel model, TextWriter log)
         {
-            if (string.IsNullOrWhiteSpace(model.CacheName)) throw new ArgumentNullException(nameof(model.VaultName));
+            if (string.IsNullOrWhiteSpace(model.CacheName)) throw new ArgumentNullException(nameof(model.CacheName));
             if (string.IsNullOrWhiteSpace(model.GroupName)) throw new ArgumentNullException(nameof(model.GroupName));
             if (string.IsNullOrWhiteSpace(model.ProjectId)) throw new ArgumentNullException(nameof(model.ProjectId));
 
@@ -437,7 +437,7 @@ namespace Builder.Net
 
         public void DeleteCache(DeleteCacheModel model, TextWriter log)
         {
-            if (string.IsNullOrWhiteSpace(model.CacheName)) throw new ArgumentNullException(nameof(model.VaultName));
+            if (string.IsNullOrWhiteSpace(model.CacheName)) throw new ArgumentNullException(nameof(model.CacheName));
             if (string.IsNullOrWhiteSpace(model.GroupName)) throw new ArgumentNullException(nameof(model.GroupName));
             if (string.IsNullOrWhiteSpace(model.ProjectId)) throw new ArgumentNullException(nameof(model.ProjectId));
 
@@ -686,14 +686,9 @@ namespace Builder.Net
             var targetProject = VstsManager.GetProject(model.TargetProjectId);
             if (targetProject == null) throw new ArgumentException(nameof(model.TargetProjectId), $"Target Project '{model.TargetProjectId}' does not exist");
 
-            var targetRepos = VstsManager.GetRepos(model.SourceProjectId);
+            var targetRepos = VstsManager.GetRepos(model.TargetProjectId);
             var targetRepo = targetRepos?.FirstOrDefault(r => r.Name.EqualsI(model.TargetRepoName));
-            if (targetRepo != null)
-            {
-                log.WriteLine($"Repo '{model.TargetRepoName}' already exists in project '{targetProject.Name}'");
-                model.TargetUrl = targetRepo.Url;
-                return model;
-            }
+            if (targetRepo != null && !string.IsNullOrWhiteSpace(targetRepo.DefaultBranch))throw new ArgumentException(nameof(model.TargetRepoName),$"Repo '{model.TargetRepoName}' is already populated in project '{targetProject.Name}'");
 
             var sourceProject = VstsManager.GetProject(model.SourceProjectId);
             if (sourceProject == null) throw new ArgumentException(nameof(model.SourceProjectId), $"Source Project '{model.SourceProjectId}' does not exist");
@@ -704,47 +699,149 @@ namespace Builder.Net
             if (sourceRepo == null) throw new Exception($"Repo '{model.SourceRepoName}' does not exist in project '{sourceProject.Name}'");
 
             //Create a new repo
-            var repoId = VstsManager.CreateRepo(targetProject.Id, model.TargetRepoName);
-            if (string.IsNullOrWhiteSpace(repoId)) throw new Exception($"Could not create target repo '{model.TargetRepoName}' in project '{targetProject.Name}'");
-
-            targetRepos = VstsManager.GetRepos(model.SourceProjectId);
-            targetRepo = targetRepos?.FirstOrDefault(r => r.Name.EqualsI(model.TargetRepoName));
-
-            log.WriteLine($"Repo '{sourceRepo.Name}' created successfully");
-            model.TargetUrl = targetRepo.Url;
-
-            //copy the sample repo if it doesnt already exist
-            var authParameters = new Dictionary<string, string>();
-            if (string.IsNullOrWhiteSpace(repo.DefaultBranch))
+            if (targetRepo == null)
             {
-                authParameters["username"] = "";
-                authParameters["password"] = AppSettings.VSTSPersonalAccessToken;
-                var serviceEndpoint = VstsManager.CreateEndpoint(sourceProject.Id, $"Temp-Import-{Guid.NewGuid()}", "Git", sourceRepo.Url, "PersonalAccessToken", authParameters);
-                VstsManager.ImportRepo(sourceProject.Id, targetRepo.Id, sourceRepo.Url, serviceEndpoint.Id);
+                var repoId = VstsManager.CreateRepo(targetProject.Id, model.TargetRepoName);
+                targetRepos = VstsManager.GetRepos(model.SourceProjectId);
+                targetRepo = targetRepos?.FirstOrDefault(r => r.Name.EqualsI(model.TargetRepoName));
+                if (targetRepo == null) throw new Exception($"Could not create target repo '{model.TargetRepoName}' in project '{targetProject.Name}'");
+                log.WriteLine($"Target repo '{model.TargetRepoName}' in project '{targetProject.Name}' successfully created");
             }
+            else
+                log.WriteLine($"Target repo '{model.TargetRepoName}' in project '{targetProject.Name}' already exists");
+
+
+            //Copy the sample repo if it doesnt already exist
+            var authParameters = new Dictionary<string, string>();
+            authParameters["username"] = "";
+            authParameters["password"] = VstsManager.VSTSPersonalAccessToken;
+            var serviceEndpoint = VstsManager.CreateEndpoint(sourceProject.Id, $"Temp-Import-{Guid.NewGuid()}", "Git", sourceRepo.Url, "PersonalAccessToken", authParameters);
+            var importRequestId=VstsManager.ImportRepo(sourceProject.Id, targetRepo.Id, sourceRepo.Url, serviceEndpoint.Id);
+
+            //Check new repo is created
+            var status = VstsManager.WaitForImport(sourceProject.Id, targetRepo.Id, importRequestId);
+            if (!status.EqualsI("completed")) throw new Exception($"Source repo '{model.SourceRepoName}' in project '{sourceProject.Name}' import to target repo '{model.TargetRepoName}' in project '{targetProject.Name}' {status} ");
+
+            log.WriteLine($"Source repo '{model.SourceRepoName}' in project '{sourceProject.Name}' successfully imported to target repo '{model.TargetRepoName}' in project '{targetProject.Name}'");
+            model.TargetUrl = targetRepo.Url;
             return model;
         }
 
-        public void CopyBuild(CopyBuildModel model, TextWriter log)
+        public CopyBuildModel CopyBuild(CopyBuildModel model, TextWriter log)
         {
+            if (string.IsNullOrWhiteSpace(model.SourceProjectId)) throw new ArgumentNullException(nameof(model.SourceProjectId));
+            if (string.IsNullOrWhiteSpace(model.SourceBuildName)) throw new ArgumentNullException(nameof(model.SourceBuildName));
+            if (string.IsNullOrWhiteSpace(model.TargetProjectId)) throw new ArgumentNullException(nameof(model.TargetProjectId));
+            if (string.IsNullOrWhiteSpace(model.TargetBuildName)) throw new ArgumentNullException(nameof(model.TargetBuildName));
 
+            var targetProject = VstsManager.GetProject(model.TargetProjectId);
+            if (targetProject == null) throw new ArgumentException(nameof(model.TargetProjectId), $"Target Project '{model.TargetProjectId}' does not exist");
+
+            var targetDefinitions = VstsManager.GetBuildDefinitions(model.TargetProjectId);
+            var targetDefinition = targetDefinitions?.FirstOrDefault(r => r.Name.EqualsI(model.TargetBuildName));
+            if (targetDefinition != null)
+            {
+                model.DefinitionId = targetDefinition.Id;
+                log.WriteLine($"Build Definition '{model.TargetBuildName}' already exists in project '{targetProject.Name}'");
+                return model;
+            }
+
+            var sourceProject = VstsManager.GetProject(model.SourceProjectId);
+            if (sourceProject == null) throw new ArgumentException(nameof(model.SourceProjectId), $"Source Project '{model.SourceProjectId}' does not exist");
+
+            //Check if the Definition already exists 
+            var sourceDefinitions = VstsManager.GetBuildDefinitions(model.SourceProjectId);
+            var sourceDefinition = sourceDefinitions?.FirstOrDefault(r => r.Name.EqualsI(model.SourceBuildName));
+            if (sourceDefinition == null) throw new Exception($"Build Definition '{model.SourceBuildName}' does not exist in project '{sourceProject.Name}'");
+
+            var targetRepos = VstsManager.GetRepos(model.TargetProjectId);
+            var targetRepo = targetRepos?.FirstOrDefault(r => r.Name.EqualsI(model.TargetRepoName));
+            if (targetRepo != null && !string.IsNullOrWhiteSpace(targetRepo.DefaultBranch)) throw new ArgumentException(nameof(model.TargetRepoName), $"Repo '{model.TargetRepoName}' is already populated in project '{targetProject.Name}'");
+
+            //Clone the new Definition
+            targetDefinition = VstsManager.CloneBuildDefinition(model.SourceProjectId, model.SourceBuildName, model.TargetBuildName, targetRepo, model.Variables, model.Secrets, true);
+            if (targetDefinition == null) throw new Exception($"Could not copy Build Definition '{model.SourceBuildName}' in project '{sourceProject.Name}' to '{model.TargetBuildName}' in project '{targetProject.Name}'");
+
+            model.DefinitionId = targetDefinition.Id;
+            log.WriteLine($"Build Definition '{model.SourceBuildName}' in project '{sourceProject.Name}' successfully copied to '{model.TargetBuildName}' in project '{targetProject.Name}'");
+            return model;
         }
 
-        public void CopyRelease(CopyReleaseModel model, TextWriter log)
+        public CopyReleaseModel CopyRelease(CopyReleaseModel model, TextWriter log)
         {
+            if (string.IsNullOrWhiteSpace(model.SourceProjectId)) throw new ArgumentNullException(nameof(model.SourceProjectId));
+            if (string.IsNullOrWhiteSpace(model.SourceReleaseName)) throw new ArgumentNullException(nameof(model.SourceReleaseName));
+            if (string.IsNullOrWhiteSpace(model.TargetProjectId)) throw new ArgumentNullException(nameof(model.TargetProjectId));
+            if (string.IsNullOrWhiteSpace(model.TargetReleaseName)) throw new ArgumentNullException(nameof(model.TargetReleaseName));
 
+            var targetProject = VstsManager.GetProject(model.TargetProjectId);
+            if (targetProject == null) throw new ArgumentException(nameof(model.TargetProjectId), $"Target Project '{model.TargetProjectId}' does not exist");
+
+            var targetDefinitions = VstsManager.GetReleaseDefinitions(model.TargetProjectId);
+            var targetDefinition = targetDefinitions?.FirstOrDefault(r => r.Name.EqualsI(model.TargetReleaseName));
+            if (targetDefinition != null)
+            {
+                model.ReleaseId = targetDefinition.Id;
+                log.WriteLine($"Release Definition '{model.TargetReleaseName}' already exists in project '{targetProject.Name}'");
+                return model;
+            }
+
+            var sourceProject = VstsManager.GetProject(model.SourceProjectId);
+            if (sourceProject == null) throw new ArgumentException(nameof(model.SourceProjectId), $"Source Project '{model.SourceProjectId}' does not exist");
+
+            //Check if the Definition already exists 
+            var sourceDefinitions = VstsManager.GetReleaseDefinitions(model.SourceProjectId);
+            var sourceDefinition = sourceDefinitions?.FirstOrDefault(r => r.Name.EqualsI(model.SourceReleaseName));
+            if (sourceDefinition == null) throw new Exception($"Release Definition '{model.SourceReleaseName}' does not exist in project '{sourceProject.Name}'");
+
+            var targetRepos = VstsManager.GetRepos(model.TargetProjectId);
+            var targetRepo = targetRepos?.FirstOrDefault(r => r.Name.EqualsI(model.TargetRepoName));
+            if (targetRepo != null && !string.IsNullOrWhiteSpace(targetRepo.DefaultBranch)) throw new ArgumentException(nameof(model.TargetRepoName), $"Repo '{model.TargetRepoName}' is already populated in project '{targetProject.Name}'");
+
+            //Clone the new Definition
+            targetDefinition = VstsManager.CloneReleaseDefinition(model.SourceProjectId, model.SourceReleaseName, model.TargetReleaseName, targetRepo, model.Variables, model.Secrets, true);
+            if (targetDefinition == null) throw new Exception($"Could not copy Release Definition '{model.SourceReleaseName}' in project '{sourceProject.Name}' to '{model.TargetReleaseName}' in project '{targetProject.Name}'");
+
+            model.ReleaseId = targetDefinition.Id;
+            log.WriteLine($"Release Definition '{model.SourceReleaseName}' in project '{sourceProject.Name}' successfully copied to '{model.TargetReleaseName}' in project '{targetProject.Name}'");
+            return model;
         }
 
-        public void QueueBuild(QueueBuildModel model, TextWriter log)
+        public ExecuteBuildModel ExecuteBuild(ExecuteBuildModel model, TextWriter log)
         {
+            var project = VstsManager.GetProject(model.ProjectId);
+            if (project == null) throw new ArgumentException(nameof(model.ProjectId), $"Project '{model.ProjectId}' does not exist");
 
-        }
+            //Check if the Definition already exists 
+            var buildDefinitions = VstsManager.GetBuildDefinitions(model.ProjectId);
+            var buildDefinition = buildDefinitions?.FirstOrDefault(r => r.Name.EqualsI(model.BuildName));
+            if (buildDefinition == null) throw new Exception($"Build Definition '{model.BuildName}' does not exist in project '{project.Name}'");
 
-        public void SendEmail(SendEmailModel model, TextWriter log)
-        {
+            var builds = VstsManager.GetBuilds(model.ProjectId, model.BuildName);
+            var build = builds?.OrderByDescending(b => b.QueueTime)?.FirstOrDefault();
             
-        }
+            //Create a new build if the last failed
+            if (build == null || !model.OnceOnly || (build.Status.EqualsI("Completed") && build.Result.EqualsI("failed", "partiallySucceeded","cancelled")))
+            {
+                build = VstsManager.QueueBuild(model.ProjectId, buildDefinition.Id.ToInt32());
+                log.WriteLine($"Build Definition '{model.BuildName}' in project '{project.Name}' successfully queued");
+            }
 
+            //Wait for the build to finish
+            if (!build.Status.EqualsI("Completed")) build = VstsManager.WaitForBuild(project.Id, build, model.StartSeconds, false);
+            if (build.Status.EqualsI("inProgress"))
+            {
+                log.WriteLine($"Build Definition '{model.BuildName}' in project '{project.Name}' started");
+                build = VstsManager.WaitForBuild(project.Id, build, model.RunSeconds, false);
+            }
+            if (build.Result.EqualsI("Failed")) throw new Exception($"Build '{build.Definition.Name}:{build.Id}' failed with status {build.Status}");
+            if (!build.Result.EqualsI("succeeded")) throw new Exception($"Build '{build.Definition.Name}:{build.Id}' timeout with result {build.Result} and status {build.Status}");
+
+            log.WriteLine($"Build Definition '{model.BuildName}' in project '{project.Name}' completed successfully");
+
+            model.BuildId = build.Id;
+            return model;
+        }
 
         private void CheckProjectGroup(IAzure azure, string groupName, string projectId)
         {

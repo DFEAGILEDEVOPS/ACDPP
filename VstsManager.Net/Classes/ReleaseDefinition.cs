@@ -1,6 +1,6 @@
 ﻿namespace VstsApi.Net.Classes
 {
-    public class Definition
+    public class ReleaseDefinition
     {
         public string Id { get; set; }
         public string Name { get; set; }

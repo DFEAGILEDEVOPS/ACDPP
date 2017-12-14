@@ -258,7 +258,7 @@ namespace Dashboard.Webjobs.Net
                 #region Step 4: Delete the previous OpenShift environment
 
                 //Get the create build definition
-                var definitions = VstsManager.GetDefinitions(adminProject.Id, AppSettings.KillBuildName);
+                var definitions = VstsManager.GetBuildDefinitions(adminProject.Id, AppSettings.KillBuildName);
                 if (definitions == null) throw new Exception($"Cannot find build definition {AppSettings.KillBuildName} in project {AppSettings.SourceProjectName}");
                 var sourceDefinition = definitions.FirstOrDefault(d => d.Name.EqualsI(AppSettings.KillBuildName));
                 if (sourceDefinition == null) throw new Exception($"Cannot find build definition {AppSettings.KillBuildName} in project {AppSettings.SourceProjectName}");
@@ -277,7 +277,7 @@ namespace Dashboard.Webjobs.Net
                 #region Step 4: Build and deploy the OpenShift environment
 
                 //Get the create build definition
-                definitions = VstsManager.GetDefinitions(adminProject.Id, AppSettings.ConfigBuildName);
+                definitions = VstsManager.GetBuildDefinitions(adminProject.Id, AppSettings.ConfigBuildName);
                 if (definitions == null) throw new Exception($"Cannot find build definition {AppSettings.ConfigBuildName} in project {AppSettings.SourceProjectName}");
                 sourceDefinition = definitions.FirstOrDefault(d => d.Name.EqualsI(AppSettings.ConfigBuildName));
                 if (sourceDefinition == null) throw new Exception($"Cannot find build definition {AppSettings.ConfigBuildName} in project {AppSettings.SourceProjectName}");
@@ -372,7 +372,7 @@ namespace Dashboard.Webjobs.Net
             var allProjects = VstsManager.GetProjects();
             var adminProject = allProjects.FirstOrDefault(p => p.Name.EqualsI(AppSettings.SourceProjectName));
 
-            var definitions = VstsManager.GetDefinitions(adminProject.Id, AppSettings.KillBuildName);
+            var definitions = VstsManager.GetBuildDefinitions(adminProject.Id, AppSettings.KillBuildName);
             if (definitions == null) throw new Exception($"Cannot find build definition {AppSettings.KillBuildName} in project {AppSettings.SourceProjectName}");
             var sourceDefinition = definitions.FirstOrDefault(d => d.Name.EqualsI(AppSettings.KillBuildName));
             if (sourceDefinition == null) throw new Exception($"Cannot find build definition {AppSettings.KillBuildName} in project {AppSettings.SourceProjectName}");

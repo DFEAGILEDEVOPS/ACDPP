@@ -167,7 +167,7 @@
     <Compile Include="Models\SaveSqlServerModel.cs" />
     <Compile Include="Models\CreateStorageModel.cs" />
     <Compile Include="Models\DeleteProjectModel.cs" />
-    <Compile Include="Models\QueueBuildModel.cs" />
+    <Compile Include="Models\ExecuteBuildModel.cs" />
     <Compile Include="Models\RemoveTeamMembersModel.cs" />
     <Compile Include="Models\SaveProjectModel.cs" />
     <Compile Include="Models\SendEmailModel.cs" />

@@ -69,6 +69,9 @@
     <Reference Include="Microsoft.VisualStudio.Services.Common, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.VisualStudio.Services.Client.15.122.1-preview\lib\net45\Microsoft.VisualStudio.Services.Common.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.VisualStudio.Services.ReleaseManagement.WebApi, Version=16.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.VisualStudio.Services.Release.Client.15.122.1-preview\lib\net45\Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.VisualStudio.Services.WebApi, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.VisualStudio.Services.Client.15.122.1-preview\lib\net45\Microsoft.VisualStudio.Services.WebApi.dll</HintPath>
     </Reference>
@@ -81,6 +84,9 @@
     <Reference Include="System.Net.Http.Formatting, Version=5.2.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.AspNet.WebApi.Client.5.2.2\lib\net45\System.Net.Http.Formatting.dll</HintPath>
     </Reference>
+    <Reference Include="System.Web.Http, Version=5.2.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.WebApi.Core.5.2.2\lib\net45\System.Web.Http.dll</HintPath>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -91,7 +97,8 @@
     <Compile Include="Authorization.cs" />
     <Compile Include="Classes\Build.cs" />
     <Compile Include="Classes\AppSettings.cs" />
-    <Compile Include="Classes\Definition.cs" />
+    <Compile Include="Classes\ReleaseDefinition.cs" />
+    <Compile Include="Classes\BuildDefinition.cs" />
     <Compile Include="Classes\Endpoint.cs" />
     <Compile Include="Classes\Entensions.cs" />
     <Compile Include="Classes\LicenceTypes.cs" />

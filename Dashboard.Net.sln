@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard2.Net", "Dashboard
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Builder.Net", "Builder.Net\Builder.Net.csproj", "{2AD7907C-35B5-4CA7-8A0C-CE5AFAF7F5B4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Director.NetStandard", "Director.NetStandard\Director.NetStandard.csproj", "{83BBF05D-F78F-49AE-8F64-EDE85F80B01F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{2AD7907C-35B5-4CA7-8A0C-CE5AFAF7F5B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2AD7907C-35B5-4CA7-8A0C-CE5AFAF7F5B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2AD7907C-35B5-4CA7-8A0C-CE5AFAF7F5B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83BBF05D-F78F-49AE-8F64-EDE85F80B01F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83BBF05D-F78F-49AE-8F64-EDE85F80B01F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83BBF05D-F78F-49AE-8F64-EDE85F80B01F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83BBF05D-F78F-49AE-8F64-EDE85F80B01F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

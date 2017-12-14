@@ -5,7 +5,7 @@
         {
             public string Id { get; set; }
             public string Url { get; set; }
-            public Definition Definition { get; set; }
+            public BuildDefinition Definition { get; set; }
             public string SourceBranch { get; set; }
             public string Parameters { get; set; }
             public string QueueTime { get; set; }

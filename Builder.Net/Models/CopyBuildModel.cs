@@ -8,9 +8,14 @@ namespace Builder.Net
 {
     public class CopyBuildModel
     {
-        public string GroupName { get; set; }
-        public string ProjectId { get; internal set; }
-        public string RepoName { get; internal set; }
-        public string Url { get; set; }
+        public string SourceProjectId { get; set; }
+        public string SourceBuildName { get; set; }
+        public string TargetProjectId { get; set; }
+        public string TargetBuildName { get; set; }
+        public string DefinitionId { get; set; }
+
+        public Dictionary<string, string> Variables { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> Secrets { get; set; } = new Dictionary<string, string>();
+        public object[] TargetRepoName { get; internal set; }
     }
 }
