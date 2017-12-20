@@ -142,7 +142,6 @@
     <None Include="packages.config" />
     <None Include="Properties\PublishProfiles\ACDPP - Web Deploy.pubxml" />
     <None Include="Properties\webjob-publish-settings.json" />
-    <None Include="Script.json" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AzureApi.Client.Net\AzureApi.Client.Net.csproj">

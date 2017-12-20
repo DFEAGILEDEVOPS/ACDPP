@@ -17,10 +17,10 @@
   ],
   "Repositories": [
     {
-      "Repository": "My Repo 1"
+      "Name": "My Repo 1"
     },
     {
-      "Repository": "My Repo 2"
+      "Name": "My Repo 2"
     }
   ],
   "AppRegistrations": [
@@ -147,6 +147,16 @@
           "AccessKeySecretName": "CacheKey1"
         }
       ]
+    }
+  ],
+  "Deletions": [
+    {
+      "Type": "",
+      "Name": ""
+    },
+    {
+      "Type": "",
+      "Name": ""
     }
   ]
 }
