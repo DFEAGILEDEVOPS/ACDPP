@@ -1,0 +1,30 @@
+﻿@using uk.gov
+
+@{
+    Layout = "~/Views/Shared/_Layout_base.cshtml";
+    ViewData["serviceName"] = Program.ProjectTitle;
+    ViewData["pageTitle"] = ViewData["serviceName"] + " - GOV.UK";
+    ViewData["headerClass"] = "with-proposition";    
+}
+
+@section propositionHeader {
+    <div class="header-proposition">
+        <div class="content">
+            <a href="#proposition-links" class="js-header-toggle menu">Menu</a>
+            <nav id="proposition-menu">
+            <a href="~/" id="proposition-name">@ViewData["serviceName"]</a>
+            <ul id="proposition-links">
+                <li><a href="https://www.gov.uk/service-manual/service-standard">Digital Service Standard</a></li>
+                <li><a href="https://www.gov.uk/service-toolkit">Service Toolkit</a></li>
+                <li><a href="https://www.gov.uk/service-manual">Service Manual</a></li>
+                <li><a href="https://www.gov.uk/contact/govuk">Feedback</a></li>
+            </ul>
+            </nav>
+        </div>
+    </div>
+}
+
+
+<main id="content" role="main">
+    @RenderBody()
+</main>

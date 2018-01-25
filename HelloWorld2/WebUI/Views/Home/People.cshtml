@@ -1,0 +1,17 @@
+﻿<div class="container-row">
+    <div class="column-two-thirds">
+        <h1 class="heading-xlarge">
+            <span class="heading-secondary">(from Database @ViewBag.Database)</span>
+            People
+        </h1>
+        <p class="lede">
+            @foreach (var person in ViewBag.People){
+                @person<br />
+            }
+        </p>
+        <a class="button button-start" href="@Url.Action("Index")">Continue</a>
+    </div>
+    <div class="column-one-third">
+        
+    </div>
+</div>
